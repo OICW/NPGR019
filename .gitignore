@@ -1,0 +1,8 @@
+include/glad
+include/GLFW
+include/glm
+include/KHR
+include/stb
+src/glad.c
+*/x64
+.vs
