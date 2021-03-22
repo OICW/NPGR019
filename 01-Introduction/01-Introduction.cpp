@@ -41,8 +41,6 @@ void main()
 // ----------------------------------------------------------------------------
 R"(
 #version 330 core
-// The following is not not needed since GLSL version #430
-#extension GL_ARB_explicit_uniform_location : require
 
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 color;
@@ -237,12 +235,12 @@ void createGeometry()
                         0.25f,  0.25f, 0.0f};
 
   // Buffer with colors
-  float colors[] = {  1.0f,  0.0f,  0.0f, // color of the 1st vertex (RGB)
-                      0.0f,  1.0f,  0.0f, // color of the 2nd vertex (RGB)
-                      0.0f,  0.0f,  1.0f, // ...
-                      1.0f,  0.0f,  1.0f,
-                      1.0f,  1.0f,  0.0f,
-                      0.0f,  1.0f,  1.0f};
+  unsigned char colors[] = { 255,   0,   0, // color of the 1st vertex (RGB)
+                               0, 255,   0, // color of the 2nd vertex (RGB)
+                               0,   0, 255, // ...
+                             255,   0, 255,
+                             255, 255,   0,
+                               0, 255, 255};
 
   // Generate the memory storage
   glGenBuffers(1, &positionBuffer);
@@ -259,12 +257,12 @@ void createGeometry()
   // Unbind the buffer
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-  // Fill the buffer with the data: we're passing 6 vertices each composed of vec3 values => sizeof(float) * 3 * 6
+  // Fill the buffer with the data: we're passing 6 vertices each composed of vec3 values => sizeof(char) * 3 * 6
   glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * ColorDim * VertexCount, colors, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(char) * ColorDim * VertexCount, colors, GL_STATIC_DRAW);
 
-  // Colors: 3 floats, stride = 3 (3 floats/vertex), offset = 0
-  glVertexAttribPointer(1, ColorDim, GL_FLOAT, GL_FALSE, ColorDim * sizeof(float), reinterpret_cast<void*>(0));
+  // Colors: 3 chars, stride = 3 (3 char/vertex), offset = 0
+  glVertexAttribPointer(1, ColorDim, GL_UNSIGNED_BYTE, GL_TRUE, ColorDim * sizeof(char), reinterpret_cast<void*>(0));
   glEnableVertexAttribArray(1); // Tied to the location in the shader
 
   // Unbind the buffer

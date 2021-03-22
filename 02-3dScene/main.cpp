@@ -45,8 +45,6 @@ void main()
 // Fragment shader source
 static const char* fsSource[] = { R"(
 #version 330 core
-// The following is not not needed since GLSL version #430
-#extension GL_ARB_explicit_uniform_location : require
 
 in vec3 vColor;
 out vec4 color;
@@ -328,7 +326,7 @@ void shutDown()
   delete cube;
   cube = nullptr;
 
-  // Relase the window
+  // Release the window
   glfwDestroyWindow(mainWindow);
 
   // Close the GLFW library
@@ -388,7 +386,7 @@ void renderScene()
   glUseProgram(shaderProgram);
 
   // Update the transformation & projection matrices
-  glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetTransformation()));
+  glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
   glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
 
   // Draw the scene geometry using index buffer instead of relying on the fact that 3 consecutive

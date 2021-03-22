@@ -556,7 +556,7 @@ void renderScene()
 #endif
 
     // Update the transformation & projection matrices
-    glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetTransformation()));
+    glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
     glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
 
     // Draw all cubes
@@ -573,7 +573,7 @@ void renderScene()
     glUseProgram(shaderProgram[ShaderProgram::Default]);
 
     // Update the transformation & projection matrices
-    glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetTransformation()));
+    glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
     glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
 
     for (int x = 0; x < instancesPerSide; ++x)

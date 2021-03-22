@@ -627,7 +627,7 @@ void updateInstanceData()
 void updateProgramData(GLuint program, const glm::vec3 &lightPosition)
 {
   // Update the transformation & projection matrices
-  glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetTransformation()));
+  glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
   glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
 
   // Update the light position
@@ -636,7 +636,7 @@ void updateProgramData(GLuint program, const glm::vec3 &lightPosition)
 
   // Update the view position
   GLint viewPosLoc = glGetUniformLocation(program, "viewPosWS");
-  glm::vec4 viewPos = camera.GetInvTransformation()[3];
+  glm::vec4 viewPos = camera.GetViewToWorld()[3];
   glUniform4f(viewPosLoc, viewPos.x, viewPos.y, viewPos.z, viewPos.w);
 }
 
@@ -720,7 +720,7 @@ void renderScene()
 
   // Update the transformation & projection matrices and other data
   {
-    glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetTransformation()));
+    glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
     glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
     glUniform3fv(2, 1, glm::value_ptr(lightPosition));
 

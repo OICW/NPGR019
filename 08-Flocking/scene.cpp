@@ -158,7 +158,7 @@ void Scene::Update(float dt, bool moveLight, bool turbo)
 void Scene::UpdateProgramData(GLuint program, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor)
 {
   // Update the transformation & projection matrices
-  glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetTransformation()));
+  glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
   glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
 
   // Update the light position
@@ -167,7 +167,7 @@ void Scene::UpdateProgramData(GLuint program, const Camera &camera, const glm::v
 
   // Update the view position
   GLint viewPosLoc = glGetUniformLocation(program, "viewPosWS");
-  glm::vec4 viewPos = camera.GetInvTransformation()[3];
+  glm::vec4 viewPos = camera.GetViewToWorld()[3];
   glUniform4fv(viewPosLoc, 1, glm::value_ptr(viewPos));
 
   // Update the light color, 4th component controls ambient light intensity
@@ -198,7 +198,7 @@ void Scene::DrawObjects(GLuint program, const Camera &camera, const glm::vec3 &l
   glUseProgram(shaderProgram[ShaderProgram::PointRendering]);
 
   // Update the transformation & projection matrices and other data
-  glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetTransformation()));
+  glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
   glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
   glUniform3fv(2, 1, glm::value_ptr(lightPosition));
 
