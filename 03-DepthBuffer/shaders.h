@@ -39,7 +39,12 @@ static const char* vsSource[] = {
 // Default vertex shader
 // ----------------------------------------------------------------------------
 R"(
-#version 460 core
+#version 330 core
+
+// The following is not not needed since GLSL version #430
+#extension GL_ARB_explicit_uniform_location : require
+// The following is not not needed since GLSL version #420
+#extension GL_ARB_shading_language_420pack : require
 
 // Uniform blocks, i.e., constants
 layout (location = 0) uniform mat4 worldToView;
@@ -67,15 +72,15 @@ void main()
 // Fullscreen quad vertex shader
 // ----------------------------------------------------------------------------
 R"(
-#version 460 core
+#version 330 core
 
 // Fullscreen quad
-vec3 position[] = {vec3(-1.0f, -1.0f, 0.0f),
-                   vec3( 1.0f, -1.0f, 0.0f),
-                   vec3( 1.0f,  1.0f, 0.0f),
-                   vec3( 1.0f,  1.0f, 0.0f),
-                   vec3(-1.0f,  1.0f, 0.0f),
-                   vec3(-1.0f, -1.0f, 0.0f)};
+vec3 position[6] = vec3[6](vec3(-1.0f, -1.0f, 0.0f),
+                           vec3( 1.0f, -1.0f, 0.0f),
+                           vec3( 1.0f,  1.0f, 0.0f),
+                           vec3( 1.0f,  1.0f, 0.0f),
+                           vec3(-1.0f,  1.0f, 0.0f),
+                           vec3(-1.0f, -1.0f, 0.0f));
 
 // Quad UV coordinates
 out vec2 UV;
@@ -104,7 +109,10 @@ static const char* fsSource[] = {
 // Default fragment shader source
 // ----------------------------------------------------------------------------
 R"(
-#version 460 core
+#version 330 core
+
+// The following is not not needed since GLSL version #420
+#extension GL_ARB_shading_language_420pack : require
 
 // Fragment shader inputs
 in vec3 vColor;
@@ -127,7 +135,12 @@ void main()
 // Depth buffer visualization fragment shader source
 // ----------------------------------------------------------------------------
 R"(
-#version 460 core
+#version 330 core
+
+// The following is not not needed since GLSL version #430
+#extension GL_ARB_explicit_uniform_location : require
+// The following is not not needed since GLSL version #420
+#extension GL_ARB_shading_language_420pack : require
 
 // Uniform blocks, i.e., constants
 layout (location = 0) uniform vec4 WIDTH_HEIGHT_MSAA_MODE;

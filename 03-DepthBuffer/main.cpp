@@ -21,10 +21,14 @@
 
 // ----------------------------------------------------------------------------
 // GLM optional parameters:
-// GLM_FORCE_DEPTH_ZERO_TO_ONE - force projection depth mapping to [0, 1]
-//                               must use glClipControl(), requires OpenGL 4.5
 // GLM_FORCE_LEFT_HANDED       - use the left handed coordinate system
 // GLM_FORCE_XYZW_ONLY         - simplify vector types and use x, y, z, w only
+// ----------------------------------------------------------------------------
+// For remapping depth to [0, 1] interval use GLM option below with glClipControl
+// glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE); // requires version >= 4.5
+//
+// GLM_FORCE_DEPTH_ZERO_TO_ONE - force projection depth mapping to [0, 1]
+//                               must use glClipControl(), requires OpenGL 4.5
 // ----------------------------------------------------------------------------
 
 // Structure for holding window parameters
@@ -241,22 +245,22 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
   if (key == GLFW_KEY_1 && action == GLFW_PRESS)
   {
-    mode = 1;
+    mode = 1; // Color (default)
   }
 
   if (key == GLFW_KEY_2 && action == GLFW_PRESS)
   {
-    mode = 2;
+    mode = 2; // Depth buffer
   }
 
   if (key == GLFW_KEY_3 && action == GLFW_PRESS)
   {
-    mode = 3;
+    mode = 3; // Linear depth
   }
 
   if (key == GLFW_KEY_4 && action == GLFW_PRESS)
   {
-    mode = 4;
+    mode = 4; // Difference between depth buffer and linear depth
   }
 }
 
@@ -270,7 +274,6 @@ void createGeometry()
 
   quad = Geometry::CreateQuadColor();
   cube = Geometry::CreateCubeColor();
-  //cube = Geometry::CreateCubeColorShared();
 }
 
 // Helper method for OpenGL initialization
@@ -282,9 +285,9 @@ bool initOpenGL()
   // Initialize the GLFW library
   if (!glfwInit()) return false;
 
-  // Request OpenGL 4.6 core profile upon window creation
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+  // Request OpenGL 3.3 core profile upon window creation
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_SAMPLES, 0);
 #if _ENABLE_OPENGL_DEBUG
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -329,9 +332,6 @@ bool initOpenGL()
   // Enable depth test
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
-
-  // Enable depth remapping to [0, 1] interval
-  glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
   // Register a window resize callback
   glfwSetFramebufferSizeCallback(mainWindow.handle, resizeCallback);
@@ -453,7 +453,7 @@ void createFramebuffer(int width, int height, GLsizei MSAA)
     glGenTextures(1, &depthStencil);
   }
 
-  // Bind and recreate the depth-stencil texture, if you don't inted to read the depth buffer,
+  // Bind and recreate the depth-stencil texture, if you don't intend to read the depth buffer,
   // you can create it as Render Buffer Object:
   //    glGenRenderbuffers(depthStencil);
   //    glBindRenderbuffer(GL_RENDERBUFFER, depthStencil);
@@ -671,7 +671,7 @@ void renderScene()
 
     // Clear the color
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Visualization shader program
     glUseProgram(shaderProgram[ShaderProgram::DepthVisualization]);
