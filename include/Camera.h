@@ -27,6 +27,8 @@ public:
 
   // Sets the movement speed
   void SetMovementSpeed(float speed) { _movementSpeed = speed; }
+  // Sets sensitivity
+  void SetSensitivity(float sensitivity) { _sensitivity = sensitivity; }
   // Sets transformation using eye, look at point and up vector
   void SetTransformation(const glm::vec3& eye, const glm::vec3& lookAt, const glm::vec3& up);
   // Returns const reference to the internal camera transformation

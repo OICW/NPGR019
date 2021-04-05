@@ -11,7 +11,7 @@ Camera::Camera():
   _worldToView(1.0f),
   _projection(1.0f),
   _movementSpeed(5.0f),
-  _sensitivity(0.1f)
+  _sensitivity(0.002f)
 {}
 
 void Camera::SetTransformation(const glm::vec3& eye, const glm::vec3& lookAt, const glm::vec3& up)
@@ -38,14 +38,22 @@ void Camera::Move(MovementDirections direction, const glm::vec2& mouseMove, floa
   float yaw = atan2(dir.z, dir.x);
   float pitch = asin(dir.y);
 
-  yaw -= mouseMove.x * _sensitivity * dt;
-  pitch -= mouseMove.y * _sensitivity * dt;
-  // TODO: check pitch > PI_HALF
+  yaw -= mouseMove.x * _sensitivity;
+  pitch -= mouseMove.y * _sensitivity;
+
+  // Checking for reaching or overflowing 90 degrees pitch to avoid singularities
+  if (fabs(pitch) > glm::radians(89.0f))
+    pitch = sign(pitch) * glm::radians(89.0f);
 
   dir.x = cos(pitch) * cos(yaw);
   dir.y = sin(pitch);
   dir.z = cos(pitch) * sin(yaw);
   dir = glm::vec4(glm::normalize(glm::vec3(dir)), 0.0f);
+
+  // Update the transformation matrix using orthonormalization with the scene up
+  _viewToWorld[0] = glm::vec4(glm::normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(dir))), 0.0f);
+  _viewToWorld[1] = glm::vec4(glm::normalize(glm::cross(glm::vec3(dir), glm::vec3(_viewToWorld[0]))), 0.0f);
+  _viewToWorld[2] = glm::vec4(glm::normalize(glm::vec3(dir)), 0.0f);
 
   // Move the camera position
   glm::vec4& position = transform[3];
@@ -68,11 +76,7 @@ void Camera::Move(MovementDirections direction, const glm::vec2& mouseMove, floa
   if ((int)direction & (int)MovementDirections::Down)
     position -= up * _movementSpeed * dt;
 
-  // Update the transformation matrix and recalculate the inverse transformation
-  // Set the aside, up, and dir using orthonormalization with scene up vector to avoid funky camera
-  _viewToWorld[0] = glm::vec4(glm::normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(dir))), 0.0f);
-  _viewToWorld[1] = glm::vec4(glm::normalize(glm::cross(glm::vec3(dir), glm::vec3(_viewToWorld[0]))), 0.0f);
-  _viewToWorld[2] = glm::vec4(glm::normalize(glm::vec3(dir)), 0.0f);
+  // Update the position and recalculate the inverse transformation
   _viewToWorld[3] = position;
   _worldToView = fastMatrixInverse(_viewToWorld);
 }

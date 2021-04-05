@@ -22,7 +22,15 @@ inline glm::mat4x4 fastMatrixInverse(const glm::mat4x4& matrix)
                      glm::vec4(-inv * glm::vec3(matrix[3]), 1.0f));
 }
 
+// Gets random number from the [min, max] range
 inline float getRandom(float min, float max)
 {
   return min + static_cast<float>(rand()) / (static_cast <float>(RAND_MAX / (max - min)));
+}
+
+// C++ type safe signum function
+template <typename T>
+inline int sign(T value)
+{
+  return (T(0) < value) - (value < T(0));
 }
