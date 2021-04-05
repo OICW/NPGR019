@@ -29,6 +29,9 @@
 //
 // GLM_FORCE_DEPTH_ZERO_TO_ONE - force projection depth mapping to [0, 1]
 //                               must use glClipControl(), requires OpenGL 4.5
+//
+// More information about the matter here:
+// https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_clip_control.txt
 // ----------------------------------------------------------------------------
 
 // Structure for holding window parameters

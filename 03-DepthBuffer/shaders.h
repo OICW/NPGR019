@@ -126,9 +126,13 @@ void main()
 {
   // Output color to the color buffer
   color = vec4(vColor, 1.0f);
-  // Output viewspace distance to the fragment to the positions buffer
-  //view_z = vViewPos.z;
-  view_z = 1.0f / gl_FragCoord.w;
+  // Output view space distance to the fragment to the positions buffer
+  view_z = vViewPos.z;
+
+  // We could forgo passing in the vViewPos position and just use
+  // gl_FragCoord.w - but we must take into consideration that it
+  // contains (x/w, y/w, z/w, 1/w), so we must output the result as:
+  //view_z = 1.0f / gl_FragCoord.w;
 }
 )",
 // ----------------------------------------------------------------------------
@@ -162,6 +166,9 @@ void main()
   // Calculate the texel coordinates
   ivec2 texCoord = ivec2(UV * WIDTH_HEIGHT_MSAA_MODE.xy);
 
+  // We can also use gl_FragCoord.xy directly
+  //ivec2 texCoord = ivec2(gl_FragCoord.xy);
+
   // For all MSAA samples
   vec3 finalColor = vec3(0.0f);
   for (int i = 0; i < WIDTH_HEIGHT_MSAA_MODE.z; ++i)
@@ -188,7 +195,10 @@ void main()
     {
       // Sample depth and linearize it by reverting the projection matrix transformation
       float d = texelFetch(depthBuffer, texCoord, i).r;
-      float z = (NEAR_FAR.x * NEAR_FAR.y) / (NEAR_FAR.y - d * (NEAR_FAR.y + NEAR_FAR.x));
+      // For [0, 1] depth range
+      //float z = (NEAR_FAR.x * NEAR_FAR.y) / (NEAR_FAR.y - d * (NEAR_FAR.y + NEAR_FAR.x));
+      // For [-1, 1] depth range, omitting 2* term to forgo division by 2 further
+      float z = (NEAR_FAR.x * NEAR_FAR.y) / (NEAR_FAR.x + NEAR_FAR.y - d * (NEAR_FAR.y + NEAR_FAR.x));
 
       // Visualize the difference between depth and linear Z, remap it to [0, 1] range
       float z_linear = texelFetch(viewPosBuffer, texCoord, i).r + NEAR_FAR.x;
@@ -201,7 +211,7 @@ void main()
   }
 
   // Discard pixels that are at the far plane of the depth buffer
-  if (WIDTH_HEIGHT_MSAA_MODE.w < 4 && all(greaterThanEqual(finalColor.rgb, WIDTH_HEIGHT_MSAA_MODE.zzz))) discard;
+  if (WIDTH_HEIGHT_MSAA_MODE.w > 1 && all(greaterThanEqual(finalColor.rgb, WIDTH_HEIGHT_MSAA_MODE.zzz))) discard;
 
   // Calculate average color
   color = vec4(finalColor.rgb / float(WIDTH_HEIGHT_MSAA_MODE.z), 1.0f);
