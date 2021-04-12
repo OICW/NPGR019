@@ -43,8 +43,6 @@ R"(
 
 // The following is not not needed since GLSL version #430
 #extension GL_ARB_explicit_uniform_location : require
-// The following is not not needed since GLSL version #420
-#extension GL_ARB_shading_language_420pack : require
 
 // Uniform blocks, i.e., constants
 layout (location = 0) uniform mat4 worldToView;
