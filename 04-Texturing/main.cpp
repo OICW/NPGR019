@@ -19,7 +19,7 @@
 #define _TUNNEL 0
 #define _CUBE 1
 
- // Set to 1 to create debugging context that reports errors, requires OpenGL 4.3!
+// Set to 1 to create debugging context that reports errors, requires OpenGL 4.3!
 #define _ENABLE_OPENGL_DEBUG 0
 
 // ----------------------------------------------------------------------------
