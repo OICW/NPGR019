@@ -7,12 +7,15 @@
 
 #include <ShaderCompiler.h>
 
+// Uses instancing via SSBO buffer, requires OpenGL 4.3 and higher
+#define _ALLOW_SSBO_INSTANCING 0
+
 // Shader programs
 namespace ShaderProgram
 {
   enum
   {
-    Default, VertexParamInstancing, InstancingBuffer, NumShaderPrograms
+    Default, VertexParamInstancing, InstancingUniformBlock, InstancingBuffer, NumShaderPrograms
   };
 }
 
@@ -29,7 +32,7 @@ namespace VertexShader
 {
   enum
   {
-    Default, VertexParamInstancing, InstancingBuffer, NumVertexShaders
+    Default, VertexParamInstancing, InstancingUniformBlock, InstancingBuffer, NumVertexShaders
   };
 }
 
@@ -39,12 +42,20 @@ static const char* vsSource[] = {
 // Default vertex shader
 // ----------------------------------------------------------------------------
 R"(
-#version 460 core
+#version 330 core
+
+// The following is not not needed since GLSL version #430
+#extension GL_ARB_explicit_uniform_location : require
 
 // Uniform blocks, i.e., constants
-layout (location = 0) uniform mat4 worldToView;
-layout (location = 1) uniform mat4 projection;
-layout (location = 2) uniform mat4 modelToWorld;
+layout (std140) uniform TransformBlock
+{
+  mat4 worldToView;
+  mat4 projection;
+};
+
+// Model to world transformation separately
+layout (location = 0) uniform mat4 modelToWorld;
 
 // Vertex attribute block, i.e., input
 layout (location = 0) in vec3 position;
@@ -63,11 +74,17 @@ void main()
 // Instancing vertex shader using instanced vertex params
 // ----------------------------------------------------------------------------
 R"(
-#version 460 core
+#version 330 core
+
+// The following is not not needed since GLSL version #430
+#extension GL_ARB_explicit_uniform_location : require
 
 // Uniform blocks, i.e., constants
-layout (location = 0) uniform mat4 worldToView;
-layout (location = 1) uniform mat4 projection;
+layout (std140) uniform TransformBlock
+{
+  mat4 worldToView;
+  mat4 projection;
+};
 
 // Vertex attribute block, i.e., input
 layout (location = 0) in vec3 position;
@@ -84,14 +101,62 @@ void main()
 }
 )",
 // ----------------------------------------------------------------------------
-// Instancing vertex shader using instancing buffer
+// Instancing vertex shader using instancing buffer via uniform block objects
+// ----------------------------------------------------------------------------
+R"(
+#version 330 core
+
+// The following is not not needed since GLSL version #430
+#extension GL_ARB_explicit_uniform_location : require
+
+// Uniform blocks, i.e., constants
+layout (std140) uniform TransformBlock
+{
+  mat4 worldToView;
+  mat4 projection;
+};
+
+// Vertex attribute block, i.e., input
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec2 texCoord;
+
+// Should match the structure on the CPU side
+//struct InstanceData
+//{
+//  mat4 modelToWorld;
+//};
+//
+//// Storage buffer used for instances using interface block syntax
+//layout (binding = 0) buffer InstanceBuffer
+//{
+//  // Only one variable length array allowed inside the storage buffer block
+//  InstanceData data[];
+//} instanceBuffer;
+
+// Vertex output
+out vec2 vTexCoord;
+
+void main()
+{
+  vTexCoord = texCoord;
+
+  // Retrieve the model to world matrix from the instance buffer
+  //mat4 modelToWorld = instanceBuffer.data[gl_InstanceID].modelToWorld;
+  gl_Position = projection * worldToView /* modelToWorld*/ * vec4(position.xyz, 1.0f);
+}
+)",
+// ----------------------------------------------------------------------------
+// Instancing vertex shader using instancing buffer via SSDO
 // ----------------------------------------------------------------------------
 R"(
 #version 460 core
 
 // Uniform blocks, i.e., constants
-layout (location = 0) uniform mat4 worldToView;
-layout (location = 1) uniform mat4 projection;
+layout (std140) uniform TransformBlock
+{
+  mat4 worldToView;
+  mat4 projection;
+};
 
 // Vertex attribute block, i.e., input
 layout (location = 0) in vec3 position;
@@ -141,7 +206,10 @@ static const char* fsSource[] = {
 // Default fragment shader source
 // ----------------------------------------------------------------------------
 R"(
-#version 460 core
+#version 330 core
+
+// The following is not not needed since GLSL version #420
+#extension GL_ARB_shading_language_420pack : require
 
 // Texture sampler
 layout (binding = 0) uniform sampler2D diffuse;

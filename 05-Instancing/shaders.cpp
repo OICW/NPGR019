@@ -28,6 +28,14 @@ bool compileShaders()
     }
   };
 
+  // UBO explicit binding lambda - call before program linking
+  auto uniformBlockBinding = [](GLuint program)
+  {
+    // Get UBO index from the program
+    GLuint uboIndex = glGetUniformBlockIndex(program, "TransformBlock");
+    glUniformBlockBinding(program, uboIndex, 0);
+  };
+
   // Compile all vertex shaders
   for (int i = 0; i < VertexShader::NumVertexShaders; ++i)
   {
@@ -54,6 +62,7 @@ bool compileShaders()
   shaderProgram[ShaderProgram::Default] = glCreateProgram();
   glAttachShader(shaderProgram[ShaderProgram::Default], vertexShader[VertexShader::Default]);
   glAttachShader(shaderProgram[ShaderProgram::Default], fragmentShader[FragmentShader::Default]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::Default]);
   if (!ShaderCompiler::LinkProgram(shaderProgram[ShaderProgram::Default]))
   {
     cleanUp();
@@ -63,20 +72,34 @@ bool compileShaders()
   shaderProgram[ShaderProgram::VertexParamInstancing] = glCreateProgram();
   glAttachShader(shaderProgram[ShaderProgram::VertexParamInstancing], vertexShader[VertexShader::VertexParamInstancing]);
   glAttachShader(shaderProgram[ShaderProgram::VertexParamInstancing], fragmentShader[FragmentShader::Default]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::VertexParamInstancing]);
   if (!ShaderCompiler::LinkProgram(shaderProgram[ShaderProgram::VertexParamInstancing]))
   {
     cleanUp();
     return false;
   }
 
+  shaderProgram[ShaderProgram::InstancingUniformBlock] = glCreateProgram();
+  glAttachShader(shaderProgram[ShaderProgram::InstancingUniformBlock], vertexShader[VertexShader::InstancingUniformBlock]);
+  glAttachShader(shaderProgram[ShaderProgram::InstancingUniformBlock], fragmentShader[FragmentShader::Default]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancingUniformBlock]);
+  if (!ShaderCompiler::LinkProgram(shaderProgram[ShaderProgram::InstancingUniformBlock]))
+  {
+    cleanUp();
+    return false;
+  }
+
+#if _ALLOW_SSBO_INSTANCING
   shaderProgram[ShaderProgram::InstancingBuffer] = glCreateProgram();
   glAttachShader(shaderProgram[ShaderProgram::InstancingBuffer], vertexShader[VertexShader::InstancingBuffer]);
   glAttachShader(shaderProgram[ShaderProgram::InstancingBuffer], fragmentShader[FragmentShader::Default]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancingBuffer]);
   if (!ShaderCompiler::LinkProgram(shaderProgram[ShaderProgram::InstancingBuffer]))
   {
     cleanUp();
     return false;
   }
+#endif
 
   cleanUp();
   return true;
