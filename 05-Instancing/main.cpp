@@ -17,8 +17,8 @@
 #include "shaders.h"
 
 // Chooses instancing method, there's also third via SSBO which requires OpenGL 4.3
-#define _VERTEX_PARAMS_INSTANCING 1
-#define _UNIFORM_BLOCK_INSTANCING 0
+#define _VERTEX_PARAMS_INSTANCING 0
+#define _UNIFORM_BLOCK_INSTANCING 1
 
 // Set to 1 to create debugging context that reports errors, requires OpenGL 4.3!
 #define _ENABLE_OPENGL_DEBUG 0
@@ -124,8 +124,8 @@ GLuint transformBlockUBO = 0;
 // Data for a single object instance
 struct InstanceData
 {
-  // In this simple example just a transformation matrix
-  glm::mat4x4 transformation;
+  // In this simple example just a transformation matrix, transposed for efficient storage
+  glm::mat3x4 transformation;
 };
 
 // ----------------------------------------------------------------------------
@@ -294,9 +294,9 @@ void createGeometry()
   glBindBuffer(GL_ARRAY_BUFFER, instancingBuffer);
   glBufferData(GL_ARRAY_BUFFER, MAX_INSTANCES * sizeof(InstanceData), nullptr, GL_DYNAMIC_DRAW);
 
-  // Enable the instanced vertex attributes, that's a matrix so we need to enable 4 additional
-  // attributes, once per each row/column. Bear in mind that the number of available attributes
-  // (vec4) per vertex is limited to 16
+  // Enable the instanced vertex attributes, that's a matrix so we need to enable 3 additional
+  // attributes, once per each row of the instance transformation matrix. Bear in mind that
+  // the number of available attributes (vec4) per vertex is limited to 16
   glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(InstanceData), reinterpret_cast<void*>(0));
   glEnableVertexAttribArray(2);
   glVertexAttribDivisor(2, 1); // Tell OpenGL to update this attribute for each instance
@@ -309,10 +309,6 @@ void createGeometry()
   glEnableVertexAttribArray(4);
   glVertexAttribDivisor(4, 1); // Tell OpenGL to update this attribute for each instance
 
-  glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(InstanceData), reinterpret_cast<void*>(3 * sizeof(glm::vec4)));
-  glEnableVertexAttribArray(5);
-  glVertexAttribDivisor(5, 1); // Tell OpenGL to update this attribute for each instance
-
   // Unbind the VAO
   glBindVertexArray(0);
 #elif _ALLOW_SSBO_INSTANCING
@@ -323,10 +319,23 @@ void createGeometry()
 
   // Unbind the buffer for now
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-#else
-  // Generate the instancing buffer as Uniform Buffer Object
-  glGenBuffers(1, &instancingBuffer);
-  // TODO
+#elif _UNIFORM_BLOCK_INSTANCING
+  {
+    // Generate the instancing buffer as Uniform Buffer Object
+    glGenBuffers(1, &instancingBuffer);
+    glBindBuffer(GL_UNIFORM_BUFFER, instancingBuffer);
+
+    // Obtain UBO index and size from the instancing shader program
+    GLuint uboIndex = glGetUniformBlockIndex(shaderProgram[ShaderProgram::InstancingUniformBlock], "InstanceBuffer");
+    GLint uboSize = 0;
+    glGetActiveUniformBlockiv(shaderProgram[ShaderProgram::InstancingUniformBlock], uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
+
+    // Describe the buffer data - we're going to change this every frame
+    glBufferData(GL_UNIFORM_BUFFER, uboSize, nullptr, GL_DYNAMIC_DRAW);
+
+    // Unbind the GL_UNIFORM_BUFFER target for now
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+  }
 #endif
 
   // Generate the transform UBO handle
@@ -344,7 +353,7 @@ void createGeometry()
   // Describe the buffer data - we're going to change this every frame
   glBufferData(GL_UNIFORM_BUFFER, uboSize, nullptr, GL_DYNAMIC_DRAW);
 
-  // Bind the memory for usage - we know that it should be at 0 for all shaders
+  // Bind the memory for usage
   glBindBufferBase(GL_UNIFORM_BUFFER, 0, transformBlockUBO);
 
   // Unbind the GL_UNIFORM_BUFFER target for now
@@ -396,6 +405,18 @@ bool initOpenGL()
   glDebugMessageCallback(debugCallback, nullptr);
   GLuint unusedIds = 0;
   glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, &unusedIds, true);
+#endif
+
+#if _UNIFORM_BLOCK_INSTANCING
+  // Check for available UBO size in bytes
+  GLint maxUboSize;
+  const GLint expectedUboSize = 4096 * 4 * 4;
+  glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUboSize);
+  if (maxUboSize < expectedUboSize)
+  {
+    printf("Implementation allowed UBO size: %d B smaller than expected (%d B)!", maxUboSize, expectedUboSize);
+    return false;
+  }
 #endif
 
   // Enable vsync
@@ -517,11 +538,17 @@ void updateTransformBlock()
   // glGetActiveUniformBlockiv() with GL_UNIFORM_SIZE, GL_UNIFORM_OFFSET,
   // I'm yoloing it here...
 
-  // Update the world to view transformation matrix
-  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4x4), static_cast<const void*>(&*glm::value_ptr(camera.GetWorldToView())));
+  // Update the world to view transformation matrix - transpose to 3 columns, 4 rows for storage in an uniform block:
+  // per std140 layout column matrix CxR is stored as an array of C columns with R elements, i.e., 4x3 matrix would
+  // waste space because it would require padding to vec4
+  glm::mat3x4 worldToView = glm::transpose(camera.GetWorldToView());
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat3x4), static_cast<const void*>(&*glm::value_ptr(worldToView)));
 
   // Update the projection matrix
-  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4x4), sizeof(glm::mat4x4), static_cast<const void*>(&*glm::value_ptr(camera.GetProjection())));
+  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat3x4), sizeof(glm::mat4x4), static_cast<const void*>(&*glm::value_ptr(camera.GetProjection())));
+
+  // Unbind the GL_UNIFORM_BUFFER target for now
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void renderScene()
@@ -558,8 +585,8 @@ void renderScene()
   // Bind the Vertex Array Object
   glBindVertexArray(cube->GetVAO());
 
-  // Create transformation matrix
-  glm::mat4x4 transformation = glm::mat4x4(1.0f);
+  // Create transformation matrix - 4 columns, 3 rows, last (0, 0, 0, 1) implicit to save space
+  glm::mat4x3 transformation = glm::mat4x3(1.0f);
   // Instance data CPU side buffer
   static std::vector<InstanceData> instanceData(MAX_INSTANCES);
 
@@ -574,9 +601,8 @@ void renderScene()
       {
         for (int z = 0; z < instancesPerSide; ++z)
         {
-          transformation = glm::mat4x4(1.0f);
-          transformation *= glm::translate(glm::vec3((float)(2 * x - instancesPerSide), (2 * y - instancesPerSide), (float)(2 * z - instancesPerSide)));
-          instanceData[x + instancesPerSide * (y + instancesPerSide * z)].transformation = transformation;
+          transformation = glm::translate(glm::vec3((float)(2 * x - instancesPerSide), (2 * y - instancesPerSide), (float)(2 * z - instancesPerSide)));
+          instanceData[x + instancesPerSide * (y + instancesPerSide * z)].transformation = glm::transpose(transformation);
         }
       }
     }
@@ -594,8 +620,30 @@ void renderScene()
 
     // Select shader program
     glUseProgram(shaderProgram[ShaderProgram::VertexParamInstancing]);
-#else
-    // Bind the instancing buffer to the index 0
+
+    // Draw all cubes
+    glDrawElementsInstanced(GL_TRIANGLES, cube->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), numInstances);
+#elif _UNIFORM_BLOCK_INSTANCING
+    // Bind the whole instancing buffer to the index 1
+    glBindBufferBase(GL_UNIFORM_BUFFER, 1, instancingBuffer);
+
+    // TODO: make this in a loop for more than 1024 instances
+
+    // Update the buffer data using mapping
+    void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+    memcpy(ptr, &*instanceData.begin(), numInstances * sizeof(InstanceData));
+    glUnmapBuffer(GL_UNIFORM_BUFFER);
+
+    // Select shader program
+    glUseProgram(shaderProgram[ShaderProgram::InstancingUniformBlock]);
+
+    // Draw all cubes
+    glDrawElementsInstanced(GL_TRIANGLES, cube->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), numInstances);
+
+    // Unbind the instancing buffer
+    glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
+#elif _ALLOW_SSBO_INSTANCING
+    // Bind the whole instancing buffer to the index 0
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instancingBuffer);
 
     // Update the buffer data using mapping
@@ -605,12 +653,10 @@ void renderScene()
 
     // Select shader program
     glUseProgram(shaderProgram[ShaderProgram::InstancingBuffer]);
-#endif
 
     // Draw all cubes
     glDrawElementsInstanced(GL_TRIANGLES, cube->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), numInstances);
 
-#if !_VERTEX_PARAMS_INSTANCING
     // Unbind the instancing buffer
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
 #endif
@@ -627,9 +673,8 @@ void renderScene()
         for (int z = 0; z < instancesPerSide; ++z)
         {
           // Update transformation matrix for the cube
-          transformation = glm::mat4x4(1.0f);
-          transformation *= glm::translate(glm::vec3((float)(2 * x - instancesPerSide), (2 * y - instancesPerSide), (float)(2 * z - instancesPerSide)));
-          glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(transformation));
+          transformation = glm::translate(glm::vec3((float)(2 * x - instancesPerSide), (2 * y - instancesPerSide), (float)(2 * z - instancesPerSide)));
+          glUniformMatrix4x3fv(0, 1, GL_FALSE, glm::value_ptr(transformation));
 
           // Draw the cube
           glDrawElements(GL_TRIANGLES, cube->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));

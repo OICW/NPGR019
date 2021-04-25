@@ -29,15 +29,21 @@ bool compileShaders()
   };
 
   // UBO explicit binding lambda - call before program linking
-  auto uniformBlockBinding = [](GLuint program)
+  auto uniformBlockBinding = [](GLuint program, const char* blockName = "TransformBlock", GLint binding = 0)
   {
     // Get UBO index from the program
-    GLuint uboIndex = glGetUniformBlockIndex(program, "TransformBlock");
-    glUniformBlockBinding(program, uboIndex, 0);
+    GLuint uboIndex = glGetUniformBlockIndex(program, blockName);
+    // Bind it always to slot 0 - since GLSL 420, it's possible to specify it in the layout block
+    glUniformBlockBinding(program, uboIndex, binding);
   };
 
   // Compile all vertex shaders
-  for (int i = 0; i < VertexShader::NumVertexShaders; ++i)
+#if _ALLOW_SSBO_INSTANCING
+  const int numVertexShaders = VertexShader::NumVertexShaders;
+#else
+  const int numVertexShaders = VertexShader::InstancingBuffer;
+#endif
+  for (int i = 0; i < numVertexShaders; ++i)
   {
     vertexShader[i] = ShaderCompiler::CompileShader(vsSource, i, GL_VERTEX_SHADER);
     if (!vertexShader[i])
@@ -62,43 +68,44 @@ bool compileShaders()
   shaderProgram[ShaderProgram::Default] = glCreateProgram();
   glAttachShader(shaderProgram[ShaderProgram::Default], vertexShader[VertexShader::Default]);
   glAttachShader(shaderProgram[ShaderProgram::Default], fragmentShader[FragmentShader::Default]);
-  uniformBlockBinding(shaderProgram[ShaderProgram::Default]);
   if (!ShaderCompiler::LinkProgram(shaderProgram[ShaderProgram::Default]))
   {
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::Default]);
 
   shaderProgram[ShaderProgram::VertexParamInstancing] = glCreateProgram();
   glAttachShader(shaderProgram[ShaderProgram::VertexParamInstancing], vertexShader[VertexShader::VertexParamInstancing]);
   glAttachShader(shaderProgram[ShaderProgram::VertexParamInstancing], fragmentShader[FragmentShader::Default]);
-  uniformBlockBinding(shaderProgram[ShaderProgram::VertexParamInstancing]);
   if (!ShaderCompiler::LinkProgram(shaderProgram[ShaderProgram::VertexParamInstancing]))
   {
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::VertexParamInstancing]);
 
   shaderProgram[ShaderProgram::InstancingUniformBlock] = glCreateProgram();
   glAttachShader(shaderProgram[ShaderProgram::InstancingUniformBlock], vertexShader[VertexShader::InstancingUniformBlock]);
   glAttachShader(shaderProgram[ShaderProgram::InstancingUniformBlock], fragmentShader[FragmentShader::Default]);
-  uniformBlockBinding(shaderProgram[ShaderProgram::InstancingUniformBlock]);
   if (!ShaderCompiler::LinkProgram(shaderProgram[ShaderProgram::InstancingUniformBlock]))
   {
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancingUniformBlock]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancingUniformBlock], "InstanceBuffer", 1);
 
 #if _ALLOW_SSBO_INSTANCING
   shaderProgram[ShaderProgram::InstancingBuffer] = glCreateProgram();
   glAttachShader(shaderProgram[ShaderProgram::InstancingBuffer], vertexShader[VertexShader::InstancingBuffer]);
   glAttachShader(shaderProgram[ShaderProgram::InstancingBuffer], fragmentShader[FragmentShader::Default]);
-  uniformBlockBinding(shaderProgram[ShaderProgram::InstancingBuffer]);
   if (!ShaderCompiler::LinkProgram(shaderProgram[ShaderProgram::InstancingBuffer]))
   {
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancingBuffer]);
 #endif
 
   cleanUp();
