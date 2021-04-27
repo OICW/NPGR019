@@ -18,8 +18,8 @@
 #include "shaders.h"
 
 // Chooses instancing method, there's also third via SSBO which requires OpenGL 4.3
-#define _VERTEX_PARAMS_INSTANCING 1
-#define _UNIFORM_BLOCK_INSTANCING 0
+#define _VERTEX_PARAMS_INSTANCING 0
+#define _UNIFORM_BLOCK_INSTANCING 1
 
 // Set to 1 to create debugging context that reports errors, requires OpenGL 4.3!
 #define _ENABLE_OPENGL_DEBUG 0
@@ -249,7 +249,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
   // Set the camera projection
   camera.SetProjection(fov, (float)mainWindow.width / (float)mainWindow.height, nearClipPlane, farClipPlane);
 
-  // Texture sampling modes
+  // Instances per cube side
   if (key == GLFW_KEY_1 && action == GLFW_PRESS)
   {
     instancesPerSide = 1;
@@ -648,7 +648,7 @@ void renderScene()
 
       // Update the buffer data using mapping
       void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-      memcpy(ptr, &*instanceData.begin() + offset, chainLength * sizeof(InstanceData));
+      memcpy(ptr, &*(instanceData.begin() + offset), chainLength * sizeof(InstanceData));
       glUnmapBuffer(GL_UNIFORM_BUFFER);
 
       // Draw the instance chain

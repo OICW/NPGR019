@@ -28,12 +28,12 @@ bool compileShaders()
     }
   };
 
-  // UBO explicit binding lambda - call before program linking
+  // UBO explicit binding lambda - call after program linking
   auto uniformBlockBinding = [](GLuint program, const char* blockName = "TransformBlock", GLint binding = 0)
   {
     // Get UBO index from the program
     GLuint uboIndex = glGetUniformBlockIndex(program, blockName);
-    // Bind it always to slot 0 - since GLSL 420, it's possible to specify it in the layout block
+    // Bind it always to slot "binding" - since GLSL 420, it's possible to specify it in the layout block
     glUniformBlockBinding(program, uboIndex, binding);
   };
 
