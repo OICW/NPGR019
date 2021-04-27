@@ -3,6 +3,7 @@
  * Licensed under the zlib license, see LICENSE.txt in the root directory.
  */
 
+#include <algorithm>
 #include <cstdio>
 #include <vector>
 #include <glad/glad.h>
@@ -17,8 +18,8 @@
 #include "shaders.h"
 
 // Chooses instancing method, there's also third via SSBO which requires OpenGL 4.3
-#define _VERTEX_PARAMS_INSTANCING 0
-#define _UNIFORM_BLOCK_INSTANCING 1
+#define _VERTEX_PARAMS_INSTANCING 1
+#define _UNIFORM_BLOCK_INSTANCING 0
 
 // Set to 1 to create debugging context that reports errors, requires OpenGL 4.3!
 #define _ENABLE_OPENGL_DEBUG 0
@@ -90,6 +91,11 @@ static constexpr float CameraNormalSpeed = 5.0f;
 static constexpr float CameraTurboSpeed = 50.0f;
 
 // ----------------------------------------------------------------------------
+
+#if _UNIFORM_BLOCK_INSTANCING
+// Maximum number of instances per single instanced draw call
+static const unsigned int MAX_INSTANCE_CHAIN_LENGTH = 1024; // must match the instancing vertex shader!
+#endif
 
 // Maximum number of allowed instances - SSBO can be up to 128 MB! - it'd be safer to ask driver, though
 static const unsigned int MAX_INSTANCES = 1000000;
@@ -373,9 +379,14 @@ bool initOpenGL()
   // Initialize the GLFW library
   if (!glfwInit()) return false;
 
-  // Request OpenGL 4.6 core profile upon window creation
+  // Request OpenGL 3.3 core profile upon window creation
+#if _ALLOW_SSBO_INSTANCING
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+#else
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+#endif
   glfwWindowHint(GLFW_SAMPLES, MSAA_SAMPLES);
 #if _ENABLE_OPENGL_DEBUG
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -627,18 +638,22 @@ void renderScene()
     // Bind the whole instancing buffer to the index 1
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, instancingBuffer);
 
-    // TODO: make this in a loop for more than 1024 instances
-
-    // Update the buffer data using mapping
-    void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-    memcpy(ptr, &*instanceData.begin(), numInstances * sizeof(InstanceData));
-    glUnmapBuffer(GL_UNIFORM_BUFFER);
-
     // Select shader program
     glUseProgram(shaderProgram[ShaderProgram::InstancingUniformBlock]);
 
-    // Draw all cubes
-    glDrawElementsInstanced(GL_TRIANGLES, cube->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), numInstances);
+    // Build instance chains and render them
+    for (int offset = 0, remaining = numInstances; remaining > 0; offset += MAX_INSTANCE_CHAIN_LENGTH, remaining -= MAX_INSTANCE_CHAIN_LENGTH)
+    {
+      const int unsigned chainLength = std::min((unsigned int)remaining, MAX_INSTANCE_CHAIN_LENGTH);
+
+      // Update the buffer data using mapping
+      void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+      memcpy(ptr, &*instanceData.begin() + offset, chainLength * sizeof(InstanceData));
+      glUnmapBuffer(GL_UNIFORM_BUFFER);
+
+      // Draw the instance chain
+      glDrawElementsInstanced(GL_TRIANGLES, cube->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), chainLength);
+    }
 
     // Unbind the instancing buffer
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
