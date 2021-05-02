@@ -28,6 +28,15 @@ bool compileShaders()
     }
   };
 
+  // UBO explicit binding lambda - call after program linking
+  auto uniformBlockBinding = [](GLuint program, const char* blockName = "TransformBlock", GLint binding = 0)
+  {
+    // Get UBO index from the program
+    GLuint uboIndex = glGetUniformBlockIndex(program, blockName);
+    // Bind it always to slot "binding" - since GLSL 420, it's possible to specify it in the layout block
+    glUniformBlockBinding(program, uboIndex, binding);
+  };
+
   // Compile all vertex shaders
   for (int i = 0; i < VertexShader::NumVertexShaders; ++i)
   {
@@ -59,6 +68,7 @@ bool compileShaders()
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::Default]);
 
   shaderProgram[ShaderProgram::Instancing] = glCreateProgram();
   glAttachShader(shaderProgram[ShaderProgram::Instancing], vertexShader[VertexShader::Instancing]);
@@ -68,6 +78,8 @@ bool compileShaders()
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::Instancing]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::Instancing], "InstanceBuffer", 1);
 
   shaderProgram[ShaderProgram::PointRendering] = glCreateProgram();
   glAttachShader(shaderProgram[ShaderProgram::PointRendering], vertexShader[VertexShader::Point]);
@@ -77,6 +89,7 @@ bool compileShaders()
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::PointRendering]);
 
   shaderProgram[ShaderProgram::Tonemapping] = glCreateProgram();
   glAttachShader(shaderProgram[ShaderProgram::Tonemapping], vertexShader[VertexShader::ScreenQuad]);

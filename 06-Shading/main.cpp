@@ -19,13 +19,20 @@
 
 #define _ENABLE_OPENGL_DEBUG 0
 
-// ----------------------------------------------------------------------------
-// GLM optional parameters:
-// GLM_FORCE_DEPTH_ZERO_TO_ONE - force projection depth mapping to [0, 1]
-//                               must use glClipControl(), requires OpenGL 4.5
-// GLM_FORCE_LEFT_HANDED       - use the left handed coordinate system
-// GLM_FORCE_XYZW_ONLY         - simplify vector types and use x, y, z, w only
-// ----------------------------------------------------------------------------
+ // ----------------------------------------------------------------------------
+ // GLM optional parameters:
+ // GLM_FORCE_LEFT_HANDED       - use the left handed coordinate system
+ // GLM_FORCE_XYZW_ONLY         - simplify vector types and use x, y, z, w only
+ // ----------------------------------------------------------------------------
+ // For remapping depth to [0, 1] interval use GLM option below with glClipControl
+ // glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE); // requires version >= 4.5
+ //
+ // GLM_FORCE_DEPTH_ZERO_TO_ONE - force projection depth mapping to [0, 1]
+ //                               must use glClipControl(), requires OpenGL 4.5
+ //
+ // More information about the matter here:
+ // https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_clip_control.txt
+ // ----------------------------------------------------------------------------
 
 // Structure for holding window parameters
 struct Window
@@ -80,7 +87,7 @@ static constexpr float CameraTurboSpeed = 50.0f;
 
 // ----------------------------------------------------------------------------
 
-// Maximum number of allowed instances - SSBO can be up to 128 MB! - it'd be safer to ask driver, though
+// Maximum number of allowed instances - must match the instancing vertex shader!
 static const unsigned int MAX_INSTANCES = 1024;
 // Max buffer length
 static const unsigned int MAX_TEXT_LENGTH = 256;
@@ -123,12 +130,14 @@ bool wireframe = false;
 bool tonemapping = true;
 // Instancing buffer handle
 GLuint instancingBuffer = 0;
+// Transformation matrices uniform buffer object
+GLuint transformBlockUBO = 0;
 
 // Data for a single object instance
 struct InstanceData
 {
-  // In this simple example just a transformation matrix
-  glm::mat4x4 transformation;
+  // In this simple example just a transformation matrix, transposed for efficient storage
+  glm::mat3x4 transformation;
 };
 
 // ----------------------------------------------------------------------------
@@ -294,13 +303,45 @@ void createGeometry()
   quad = Geometry::CreateQuadNormalTangentTex();
   cube = Geometry::CreateCubeNormalTangentTex();
 
-  // Generate the instancing buffer but don't fill it with data
-  glGenBuffers(1, &instancingBuffer);
-  glBindBuffer(GL_SHADER_STORAGE_BUFFER, instancingBuffer);
-  glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_INSTANCES * sizeof(InstanceData), nullptr, GL_DYNAMIC_DRAW);
+  {
+    // Generate the instancing buffer as Uniform Buffer Object
+    glGenBuffers(1, &instancingBuffer);
+    glBindBuffer(GL_UNIFORM_BUFFER, instancingBuffer);
 
-  // Unbind the buffer for now
-  glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    // Obtain UBO index and size from the instancing shader program
+    GLuint uboIndex = glGetUniformBlockIndex(shaderProgram[ShaderProgram::Instancing], "InstanceBuffer");
+    GLint uboSize = 0;
+    glGetActiveUniformBlockiv(shaderProgram[ShaderProgram::Instancing], uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
+
+    // Describe the buffer data - we're going to change this every frame
+    glBufferData(GL_UNIFORM_BUFFER, uboSize, nullptr, GL_DYNAMIC_DRAW);
+
+    // Unbind the GL_UNIFORM_BUFFER target for now
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+  }
+
+  {
+    // Generate the transform UBO handle
+    glGenBuffers(1, &transformBlockUBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, transformBlockUBO);
+
+    // Obtain UBO index from the default shader program:
+    // we're gonna bind this UBO for all shader programs and we're making
+    // assumption that all of the UBO's used by our shader programs are
+    // all the same size
+    GLuint uboIndex = glGetUniformBlockIndex(shaderProgram[ShaderProgram::Default], "TransformBlock");
+    GLint uboSize = 0;
+    glGetActiveUniformBlockiv(shaderProgram[ShaderProgram::Default], uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
+
+    // Describe the buffer data - we're going to change this every frame
+    glBufferData(GL_UNIFORM_BUFFER, uboSize, nullptr, GL_DYNAMIC_DRAW);
+
+    // Bind the memory for usage
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, transformBlockUBO);
+
+    // Unbind the GL_UNIFORM_BUFFER target for now
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+  }
 
   // Position the first cube half a meter above origin
   cubePositions.reserve(numCubes);
@@ -326,9 +367,9 @@ bool initOpenGL()
   // Initialize the GLFW library
   if (!glfwInit()) return false;
 
-  // Request OpenGL 4.6 core profile upon window creation
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+  // Request OpenGL 3.3 core profile upon window creation
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 #if _ENABLE_OPENGL_DEBUG
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif
@@ -359,6 +400,23 @@ bool initOpenGL()
   glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, &unusedIds, true);
 #endif
 
+  // Check for available UBO size in bytes
+  GLint maxUboSize;
+  const GLint expectedUboSize = 4096 * 4 * 4;
+  glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUboSize);
+  if (maxUboSize < expectedUboSize)
+  {
+    printf("Implementation allowed UBO size: %d B smaller than expected (%d B)!", maxUboSize, expectedUboSize);
+    return false;
+  }
+
+  // Prevent crashes
+  if (numCubes > MAX_INSTANCES)
+  {
+    printf("Trying to render more than the maximum number of cubes: %d!", MAX_INSTANCES);
+    return false;
+  }
+
   // Enable vsync
   if (vsync)
     glfwSwapInterval(1);
@@ -372,9 +430,6 @@ bool initOpenGL()
   // Enable depth test
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
-
-  // Enable depth remapping to [0, 1] interval
-  glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
   // Register a window resize callback
   glfwSetFramebufferSizeCallback(mainWindow.handle, resizeCallback);
@@ -601,7 +656,7 @@ void bindTextures(const GLuint &diffuse, const GLuint &normal, const GLuint &spe
 void updateInstanceData()
 {
   // Create transformation matrix
-  glm::mat4x4 transformation = glm::mat4x4(1.0f);
+  static glm::mat4x4 transformation;
   // Instance data CPU side buffer
   static std::vector<InstanceData> instanceData(MAX_INSTANCES);
 
@@ -609,26 +664,24 @@ void updateInstanceData()
   float angle = 20.0f;
   for (int i = 0; i < numCubes; ++i)
   {
-    // Create unit matrix
     transformation = glm::translate(cubePositions[i]);
     transformation *= glm::rotate(glm::radians(i * angle), glm::vec3(1.0f, 1.0f, 1.0f));
-    instanceData[i].transformation = transformation;
+
+    instanceData[i].transformation = glm::transpose(transformation);
   }
 
-  // Bind the instancing buffer to the index 0
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instancingBuffer);
+  // Bind the whole instancing buffer to the index 1
+  glBindBufferBase(GL_UNIFORM_BUFFER, 1, instancingBuffer);
 
   // Update the buffer data using mapping
-  void *ptr = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
-  memcpy(ptr, &*instanceData.begin(), (numCubes + 1) * sizeof(InstanceData));
-  glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+  void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+  memcpy(ptr, &*(instanceData.begin()), numCubes * sizeof(InstanceData));
+  glUnmapBuffer(GL_UNIFORM_BUFFER);
 }
 
 void updateProgramData(GLuint program, const glm::vec3 &lightPosition)
 {
-  // Update the transformation & projection matrices
-  glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
-  glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
+  // TODO: make this a transform block as well
 
   // Update the light position
   GLint lightLoc = glGetUniformLocation(program, "lightPosWS");
@@ -640,10 +693,32 @@ void updateProgramData(GLuint program, const glm::vec3 &lightPosition)
   glUniform4f(viewPosLoc, viewPos.x, viewPos.y, viewPos.z, viewPos.w);
 }
 
+// Helper method to update transformation uniform block
+void updateTransformBlock()
+{
+  // Tell OpenGL we want to work with our transform block
+  glBindBuffer(GL_UNIFORM_BUFFER, transformBlockUBO);
+
+  // Note: we should properly obtain block members size and offset via
+  // glGetActiveUniformBlockiv() with GL_UNIFORM_SIZE, GL_UNIFORM_OFFSET,
+  // I'm yoloing it here...
+
+  // Update the world to view transformation matrix - transpose to 3 columns, 4 rows for storage in an uniform block:
+  // per std140 layout column matrix CxR is stored as an array of C columns with R elements, i.e., 4x3 matrix would
+  // waste space because it would require padding to vec4
+  glm::mat3x4 worldToView = glm::transpose(camera.GetWorldToView());
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat3x4), static_cast<const void*>(&*glm::value_ptr(worldToView)));
+
+  // Update the projection matrix
+  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat3x4), sizeof(glm::mat4x4), static_cast<const void*>(&*glm::value_ptr(camera.GetProjection())));
+
+  // Unbind the GL_UNIFORM_BUFFER target for now
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
 void renderScene()
 {
-  // Update the scene
-  updateInstanceData();
+  updateTransformBlock();
 
   // Bind the framebuffer
   glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -682,56 +757,59 @@ void renderScene()
   static glm::vec3 lightPosition(-3.0f, 3.0f, 0.0f);
 
   // Draw the scene floor:
-  glUseProgram(shaderProgram[ShaderProgram::Default]);
-
-  // Update the transformation & projection matrices
   {
+    glUseProgram(shaderProgram[ShaderProgram::Default]);
     updateProgramData(shaderProgram[ShaderProgram::Default], lightPosition);
 
-    glm::mat4x4 transformation = glm::scale(glm::vec3(30.0f, 1.0f, 30.0f));
-    glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(transformation));
+    // Create transformation matrix - 4 columns, 3 rows, last (0, 0, 0, 1) implicit to save space
+    glm::mat4x3 transformation = glm::scale(glm::vec3(30.0f, 1.0f, 30.0f));
+    glUniformMatrix4x3fv(0, 1, GL_FALSE, glm::value_ptr(transformation));
+
+    bindTextures(loadedTextures[LoadedTextures::CheckerBoard], loadedTextures[LoadedTextures::Blue], loadedTextures[LoadedTextures::Grey], loadedTextures[LoadedTextures::White]);
+
+    glBindVertexArray(quad->GetVAO());
+    glDrawElements(GL_TRIANGLES, quad->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
   }
-
-  bindTextures(loadedTextures[LoadedTextures::CheckerBoard], loadedTextures[LoadedTextures::Blue], loadedTextures[LoadedTextures::Grey], loadedTextures[LoadedTextures::White]);
-
-  glBindVertexArray(quad->GetVAO());
-  glDrawElements(GL_TRIANGLES, quad->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
 
   // --------------------------------------------------------------------------
 
   // Draw cubes:
-  glUseProgram(shaderProgram[ShaderProgram::Instancing]);
+  {
+    glUseProgram(shaderProgram[ShaderProgram::Instancing]);
 
-  // Update the transformation & projection matrices
-  updateProgramData(shaderProgram[ShaderProgram::Instancing], lightPosition);
+    // Update the transformation & projection matrices
+    updateProgramData(shaderProgram[ShaderProgram::Instancing], lightPosition);
 
-  bindTextures(loadedTextures[LoadedTextures::Diffuse], loadedTextures[LoadedTextures::Normal], loadedTextures[LoadedTextures::Specular], loadedTextures[LoadedTextures::Occlusion]);
+    // Update instances and bind the instancing buffer
+    updateInstanceData();
 
-  glBindVertexArray(cube->GetVAO());
-  glDrawElementsInstanced(GL_TRIANGLES, cube->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), numCubes);
+    bindTextures(loadedTextures[LoadedTextures::Diffuse], loadedTextures[LoadedTextures::Normal], loadedTextures[LoadedTextures::Specular], loadedTextures[LoadedTextures::Occlusion]);
 
-  // Unbind the instancing buffer (it was bound since the updateInstanceData() call
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+    glBindVertexArray(cube->GetVAO());
+    glDrawElementsInstanced(GL_TRIANGLES, cube->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), numCubes);
+
+    // Unbind the instancing buffer
+    glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
+  }
 
   // --------------------------------------------------------------------------
 
   // Draw the light:
-  glUseProgram(shaderProgram[ShaderProgram::PointRendering]);
-
-  // Update the transformation & projection matrices and other data
   {
-    glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
-    glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
-    glUniform3fv(2, 1, glm::value_ptr(lightPosition));
+    glUseProgram(shaderProgram[ShaderProgram::PointRendering]);
+
+    // Update the light position
+    GLint loc = glGetUniformLocation(shaderProgram[ShaderProgram::PointRendering], "position");
+    glUniform3fv(loc, 1, glm::value_ptr(lightPosition));
 
     // Update the color
-    GLint colorLoc = glGetUniformLocation(shaderProgram[ShaderProgram::PointRendering], "color");
-    glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f);
-  }
+    loc = glGetUniformLocation(shaderProgram[ShaderProgram::PointRendering], "color");
+    glUniform3f(0, 1.0f, 1.0f, 1.0f);
 
-  glPointSize(10.0f);
-  glBindVertexArray(vao);
-  glDrawArrays(GL_POINTS, 0, 1);
+    glPointSize(10.0f);
+    glBindVertexArray(vao);
+    glDrawArrays(GL_POINTS, 0, 1);
+  }
 
   // --------------------------------------------------------------------------
 
@@ -798,7 +876,6 @@ void mainLoop()
 
     // Print it to the title bar
     static char title[MAX_TEXT_LENGTH];
-    static char instacing[] = "[Instancing] ";
     snprintf(title, MAX_TEXT_LENGTH, "dt = %.2fms, FPS = %.1f", dt * 1000.0f, 1.0f / dt);
     glfwSetWindowTitle(mainWindow.handle, title);
 
