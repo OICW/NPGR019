@@ -116,7 +116,7 @@ void main()
 }
 )",
 // ----------------------------------------------------------------------------
-// Instancing vertex shader using instancing buffer via uniform block objects
+// Instancing vertex shader using instancing buffer via uniform buffer objects
 // ----------------------------------------------------------------------------
 R"(
 #version 330 core
@@ -169,7 +169,7 @@ void main()
 }
 )",
 // ----------------------------------------------------------------------------
-// Instancing vertex shader using instancing buffer via SSDO
+// Instancing vertex shader using instancing buffer via SSBO
 // ----------------------------------------------------------------------------
 R"(
 #version 460 core
