@@ -16,14 +16,22 @@
 #include "shaders.h"
 #include "scene.h"
 
-#define _ENABLE_OPENGL_DEBUG 1
+// Set to 1 to create debugging context that reports errors, requires OpenGL 4.3!
+#define _ENABLE_OPENGL_DEBUG 0
 
 // ----------------------------------------------------------------------------
 // GLM optional parameters:
-// GLM_FORCE_DEPTH_ZERO_TO_ONE - force projection depth mapping to [0, 1]
-//                               must use glClipControl(), requires OpenGL 4.5
 // GLM_FORCE_LEFT_HANDED       - use the left handed coordinate system
 // GLM_FORCE_XYZW_ONLY         - simplify vector types and use x, y, z, w only
+// ----------------------------------------------------------------------------
+// For remapping depth to [0, 1] interval use GLM option below with glClipControl
+// glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE); // requires version >= 4.5
+//
+// GLM_FORCE_DEPTH_ZERO_TO_ONE - force projection depth mapping to [0, 1]
+//                               must use glClipControl(), requires OpenGL 4.5
+//
+// More information about the matter here:
+// https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_clip_control.txt
 // ----------------------------------------------------------------------------
 
 // Structure for holding window parameters
@@ -232,9 +240,9 @@ bool initOpenGL()
   // Initialize the GLFW library
   if (!glfwInit()) return false;
 
-  // Request OpenGL 4.6 core profile upon window creation
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+  // Request OpenGL 3.3 core profile upon window creation
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 #if _ENABLE_OPENGL_DEBUG
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif
@@ -270,9 +278,6 @@ bool initOpenGL()
     glfwSwapInterval(1);
   else
     glfwSwapInterval(0);
-
-  // Enable depth remapping to [0, 1] interval
-  glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
   // Register a window resize callback
   glfwSetFramebufferSizeCallback(mainWindow.handle, resizeCallback);
@@ -464,6 +469,7 @@ void renderScene()
   // Bind the framebuffer
   glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
+  // Draw our scene
   scene.Draw(camera, renderMode, carmackReverse);
 
   // Unbind the shader program and other resources

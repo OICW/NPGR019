@@ -17,22 +17,23 @@
 
 #include "shaders.h"
 
+// Set to 1 to create debugging context that reports errors, requires OpenGL 4.3!
 #define _ENABLE_OPENGL_DEBUG 0
 
- // ----------------------------------------------------------------------------
- // GLM optional parameters:
- // GLM_FORCE_LEFT_HANDED       - use the left handed coordinate system
- // GLM_FORCE_XYZW_ONLY         - simplify vector types and use x, y, z, w only
- // ----------------------------------------------------------------------------
- // For remapping depth to [0, 1] interval use GLM option below with glClipControl
- // glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE); // requires version >= 4.5
- //
- // GLM_FORCE_DEPTH_ZERO_TO_ONE - force projection depth mapping to [0, 1]
- //                               must use glClipControl(), requires OpenGL 4.5
- //
- // More information about the matter here:
- // https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_clip_control.txt
- // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// GLM optional parameters:
+// GLM_FORCE_LEFT_HANDED       - use the left handed coordinate system
+// GLM_FORCE_XYZW_ONLY         - simplify vector types and use x, y, z, w only
+// ----------------------------------------------------------------------------
+// For remapping depth to [0, 1] interval use GLM option below with glClipControl
+// glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE); // requires version >= 4.5
+//
+// GLM_FORCE_DEPTH_ZERO_TO_ONE - force projection depth mapping to [0, 1]
+//                               must use glClipControl(), requires OpenGL 4.5
+//
+// More information about the matter here:
+// https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_clip_control.txt
+// ----------------------------------------------------------------------------
 
 // Structure for holding window parameters
 struct Window

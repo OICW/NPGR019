@@ -50,11 +50,11 @@ public:
   // Data for a single object instance
   struct InstanceData
   {
-    // In this simple example just a transformation matrix
-    glm::mat4x4 transformation;
+    // In this simple example just a transformation matrix, transposed for efficient storage
+    glm::mat3x4 transformation;
   };
 
-  // Maximum number of allowed instances - SSBO can be up to 128 MB! - it'd be safer to ask driver, though
+  // Maximum number of allowed instances - must match the instancing vertex shader!
   static const unsigned int MAX_INSTANCES = 1024;
 
   // Get and create instance for this singleton
@@ -93,6 +93,8 @@ private:
   void UpdateInstanceData();
   // Helper function for updating shader program data
   void UpdateProgramData(GLuint program, RenderPass renderPass, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor);
+  // Helper method to update transformation uniform block
+  void UpdateTransformBlock(const Camera &camera);
   // Draw the backdrop, floor and walls
   void DrawBackground(GLuint program, RenderPass renderPass, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor);
   // Draw cubes
@@ -120,4 +122,6 @@ private:
   Mesh<Vertex_Pos_Nrm_Tgt_Tex> *_cubeAdjacency = nullptr;
   // Instancing buffer handle
   GLuint _instancingBuffer = 0;
+  // Transformation matrices uniform buffer object
+  GLuint _transformBlockUBO = 0;
 };

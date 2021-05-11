@@ -74,13 +74,45 @@ void Scene::Init(int numCubes, int numLights)
   // Create general use VAO
   glGenVertexArrays(1, &_vao);
 
-  // Generate the instancing buffer but don't fill it with data
-  glGenBuffers(1, &_instancingBuffer);
-  glBindBuffer(GL_SHADER_STORAGE_BUFFER, _instancingBuffer);
-  glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_INSTANCES * sizeof(InstanceData), nullptr, GL_DYNAMIC_DRAW);
+  {
+    // Generate the instancing buffer as Uniform Buffer Object
+    glGenBuffers(1, &_instancingBuffer);
+    glBindBuffer(GL_UNIFORM_BUFFER, _instancingBuffer);
 
-  // Unbind the buffer for now
-  glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    // Obtain UBO index and size from the instancing shader program
+    GLuint uboIndex = glGetUniformBlockIndex(shaderProgram[ShaderProgram::Instancing], "InstanceBuffer");
+    GLint uboSize = 0;
+    glGetActiveUniformBlockiv(shaderProgram[ShaderProgram::Instancing], uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
+
+    // Describe the buffer data - we're going to change this every frame
+    glBufferData(GL_UNIFORM_BUFFER, uboSize, nullptr, GL_DYNAMIC_DRAW);
+
+    // Unbind the GL_UNIFORM_BUFFER target for now
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+  }
+
+  {
+    // Generate the transform UBO handle
+    glGenBuffers(1, &_transformBlockUBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, _transformBlockUBO);
+
+    // Obtain UBO index from the default shader program:
+    // we're gonna bind this UBO for all shader programs and we're making
+    // assumption that all of the UBO's used by our shader programs are
+    // all the same size
+    GLuint uboIndex = glGetUniformBlockIndex(shaderProgram[ShaderProgram::Default], "TransformBlock");
+    GLint uboSize = 0;
+    glGetActiveUniformBlockiv(shaderProgram[ShaderProgram::Default], uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
+
+    // Describe the buffer data - we're going to change this every frame
+    glBufferData(GL_UNIFORM_BUFFER, uboSize, nullptr, GL_DYNAMIC_DRAW);
+
+    // Bind the memory for usage
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, _transformBlockUBO);
+
+    // Unbind the GL_UNIFORM_BUFFER target for now
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+  }
 
   // --------------------------------------------------------------------------
 
@@ -193,27 +225,24 @@ void Scene::UpdateInstanceData()
     // Create unit matrix
     transformation = glm::translate(_cubePositions[i]);
     transformation *= glm::rotate(glm::radians(i * angle), glm::vec3(1.0f, 1.0f, 1.0f));
-    instanceData[i].transformation = transformation;
+
+    instanceData[i].transformation = glm::transpose(transformation);
   }
 
-  // Bind the instancing buffer to the index 0
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _instancingBuffer);
+  // Bind the instancing buffer to the index 1
+  glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
 
   // Update the buffer data using mapping
-  void *ptr = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
+  void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
   memcpy(ptr, &*instanceData.begin(), (_numCubes + 1) * sizeof(InstanceData));
-  glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+  glUnmapBuffer(GL_UNIFORM_BUFFER);
 
   // Unbind the instancing buffer
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+  glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
 }
 
 void Scene::UpdateProgramData(GLuint program, RenderPass renderPass, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor)
 {
-  // Update the transformation & projection matrices
-  glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
-  glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
-
   // Update the light position, use 4th component to pass direct light intensity
   if ((int)renderPass & ((int)RenderPass::ShadowVolume | (int)RenderPass::LightPass))
   {
@@ -235,6 +264,28 @@ void Scene::UpdateProgramData(GLuint program, RenderPass renderPass, const Camer
   }
 }
 
+void Scene::UpdateTransformBlock(const Camera &camera)
+{
+  // Tell OpenGL we want to work with our transform block
+  glBindBuffer(GL_UNIFORM_BUFFER, _transformBlockUBO);
+
+  // Note: we should properly obtain block members size and offset via
+  // glGetActiveUniformBlockiv() with GL_UNIFORM_SIZE, GL_UNIFORM_OFFSET,
+  // I'm yoloing it here...
+
+  // Update the world to view transformation matrix - transpose to 3 columns, 4 rows for storage in an uniform block:
+  // per std140 layout column matrix CxR is stored as an array of C columns with R elements, i.e., 4x3 matrix would
+  // waste space because it would require padding to vec4
+  glm::mat3x4 worldToView = glm::transpose(camera.GetWorldToView());
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat3x4), static_cast<const void*>(&*glm::value_ptr(worldToView)));
+
+  // Update the projection matrix
+  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat3x4), sizeof(glm::mat4x4), static_cast<const void*>(&*glm::value_ptr(camera.GetProjection())));
+
+  // Unbind the GL_UNIFORM_BUFFER target for now
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
 void Scene::DrawBackground(GLuint program, RenderPass renderPass, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor)
 {
   // Bind the shader program and update its data
@@ -252,21 +303,24 @@ void Scene::DrawBackground(GLuint program, RenderPass renderPass, const Camera &
 
   // Draw floor:
   glm::mat4x4 transformation = glm::scale(glm::vec3(30.0f, 1.0f, 30.0f));
-  glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(transformation));
+  glm::mat4x3 passMatrix = transformation;
+  glUniformMatrix4x3fv(0, 1, GL_FALSE, glm::value_ptr(passMatrix));
   glDrawElements(GL_TRIANGLES, _quad->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
 
   // Draw Z axis wall
   transformation = glm::translate(glm::vec3(0.0f, 0.0f, 15.0f));
   transformation *= glm::rotate(-PI_HALF, glm::vec3(1.0f, 0.0f, 0.0f));
   transformation *= glm::scale(glm::vec3(30.0f, 1.0f, 30.0f));
-  glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(transformation));
+  passMatrix = transformation;
+  glUniformMatrix4x3fv(0, 1, GL_FALSE, glm::value_ptr(passMatrix));
   glDrawElements(GL_TRIANGLES, _quad->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
 
   // Draw X axis wall
   transformation = glm::translate(glm::vec3(15.0f, 0.0f, 0.0f));
   transformation *= glm::rotate(PI_HALF, glm::vec3(0.0f, 0.0f, 1.0f));
   transformation *= glm::scale(glm::vec3(30.0f, 1.0f, 30.0f));
-  glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(transformation));
+  passMatrix = transformation;
+  glUniformMatrix4x3fv(0, 1, GL_FALSE, glm::value_ptr(passMatrix));
   glDrawElements(GL_TRIANGLES, _quad->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
 }
 
@@ -277,8 +331,8 @@ void Scene::DrawObjects(GLuint program, RenderPass renderPass, const Camera &cam
   // Update the transformation & projection matrices
   UpdateProgramData(program, renderPass, camera, lightPosition, lightColor);
 
-  // Bind the instancing buffer to the index 0
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _instancingBuffer);
+  // Bind the instancing buffer to the index 1
+  glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
 
   // Bind textures
   if ((int)renderPass & (int)RenderPass::LightPass)
@@ -301,7 +355,7 @@ void Scene::DrawObjects(GLuint program, RenderPass renderPass, const Camera &cam
   }
 
   // Unbind the instancing buffer
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+  glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
 
   // --------------------------------------------------------------------------
 
@@ -310,14 +364,16 @@ void Scene::DrawObjects(GLuint program, RenderPass renderPass, const Camera &cam
   {
     glUseProgram(shaderProgram[ShaderProgram::PointRendering]);
 
-    // Update the transformation & projection matrices and other data
-    glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.GetWorldToView()));
-    glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(camera.GetProjection()));
-    glUniform3fv(2, 1, glm::value_ptr(lightPosition));
+    // Update the light position
+    GLint loc = glGetUniformLocation(shaderProgram[ShaderProgram::PointRendering], "position");
+    glUniform3fv(loc, 1, glm::value_ptr(lightPosition));
 
     // Update the color
-    GLint colorLoc = glGetUniformLocation(shaderProgram[ShaderProgram::PointRendering], "color");
-    glUniform3fv(colorLoc, 1, glm::value_ptr(lightColor));
+    loc = glGetUniformLocation(shaderProgram[ShaderProgram::PointRendering], "color");
+    glUniform3fv(loc, 1, glm::value_ptr(lightColor * 0.05f));
+
+    // Disable blending for lights
+    glDisable(GL_BLEND);
 
     glPointSize(10.0f);
     glBindVertexArray(_vao);
@@ -327,6 +383,8 @@ void Scene::DrawObjects(GLuint program, RenderPass renderPass, const Camera &cam
 
 void Scene::Draw(const Camera &camera, const RenderMode &renderMode, bool carmackReverse)
 {
+  UpdateTransformBlock(camera);
+
   // --------------------------------------------------------------------------
   // Depth pass drawing:
   // --------------------------------------------------------------------------

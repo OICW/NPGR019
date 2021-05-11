@@ -35,6 +35,15 @@ bool compileShaders()
     }
   };
 
+  // UBO explicit binding lambda - call after program linking
+  auto uniformBlockBinding = [](GLuint program, const char* blockName = "TransformBlock", GLint binding = 0)
+  {
+    // Get UBO index from the program
+    GLuint uboIndex = glGetUniformBlockIndex(program, blockName);
+    // Bind it always to slot "binding" - since GLSL 420, it's possible to specify it in the layout block
+    glUniformBlockBinding(program, uboIndex, binding);
+  };
+
   // Compile all vertex shaders
   for (int i = 0; i < VertexShader::NumVertexShaders; ++i)
   {
@@ -77,6 +86,7 @@ bool compileShaders()
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::Default]);
 
   // Shader program for non-instanced geometry w/o color
   shaderProgram[ShaderProgram::DefaultDepthPass] = glCreateProgram();
@@ -87,6 +97,7 @@ bool compileShaders()
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::DefaultDepthPass]);
 
   // Shader program for instanced geometry w/ color
   shaderProgram[ShaderProgram::Instancing] = glCreateProgram();
@@ -97,6 +108,8 @@ bool compileShaders()
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::Instancing]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::Instancing], "InstanceBuffer", 1);
 
   // Shader program for instanced geometry w/o color
   shaderProgram[ShaderProgram::InstancingDepthPass] = glCreateProgram();
@@ -107,6 +120,8 @@ bool compileShaders()
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancingDepthPass]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancingDepthPass], "InstanceBuffer", 1);
 
   // Shader program for instanced geometry w/ shadow volume extrusion
   shaderProgram[ShaderProgram::InstancedShadowVolume] = glCreateProgram();
@@ -118,6 +133,8 @@ bool compileShaders()
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancedShadowVolume]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancedShadowVolume], "InstanceBuffer", 1);
 
   // Shader program for point rendering w/ constant color
   shaderProgram[ShaderProgram::PointRendering] = glCreateProgram();
@@ -128,6 +145,7 @@ bool compileShaders()
     cleanUp();
     return false;
   }
+  uniformBlockBinding(shaderProgram[ShaderProgram::PointRendering]);
 
   // Shader program for rendering tonemapping post-process
   shaderProgram[ShaderProgram::Tonemapping] = glCreateProgram();

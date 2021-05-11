@@ -24,11 +24,10 @@ Textures should be put to the `bin/data` directory where the code is expecting t
 Any texture set with diffuse map, normal map and specular map (I'm abusing supplied roughness map for that purpose) will do.
 
 ## Notes
-All the basic projets (`01-Introduction`, `02-3dScene`, `03-DepthBuffer`, `04-Texturing`, `05-Instancing`, and `06-Shading`)
+All the basic projets (`01-Introduction`, `02-3dScene`, `03-DepthBuffer`, `04-Texturing`, `05-Instancing`, `06-Shading`, and `07-ShadowVolumes`)
 are converted to OpenGL 3.3 because of compatibility with older embedded GPU's.
 `05-Instancing` contains a modern SSBO based version in addition to 2 older ways of instancing.
 The only difference from past years is that depth is mapped in the traditional
 [OpenGL way of [-1, 1]](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_clip_control.txt)
 which prevents better utilization of the depth buffer precision.
-Project `07-ShadowVolumes` relies on geometry shaders which should make it possible to port to OpenGL 3.3 - I'll do it in the near future.
-`08-Flocking` uses compute shaders which require OpenGL 4.3, though.
+Project `08-Flocking` uses compute shaders which require OpenGL 4.3, though, so I'll keep the sources as they are.
