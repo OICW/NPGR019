@@ -16,7 +16,7 @@
 #include "shaders.h"
 #include "scene.h"
 
-#define _ENABLE_OPENGL_DEBUG 1
+#define _ENABLE_OPENGL_DEBUG 0
 
 // ----------------------------------------------------------------------------
 // GLM optional parameters:
