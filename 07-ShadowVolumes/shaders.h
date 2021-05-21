@@ -522,22 +522,22 @@ void main()
   vec3 e6 = v[5].worldPos.xyz - v[0].worldPos.xyz;
 
   // Direction towards light
-  vec3 lightDir = lightPosWS.xyz - v[0].worldPos.xyz;
+  vec3 lightDir = normalize(lightPosWS.xyz - v[0].worldPos.xyz);
   // Normal
-  vec3 normal = cross(e1, e2);
+  vec3 normal = cross(e2, e1);
 
   // Handle only light facing triangles
   if (dot(normal, lightDir) > 0)
   {
      // Check e1 for being silhouette
-     normal = cross(e3, e1);
+     normal = cross(e1, e3);
      if (dot(normal, lightDir) <= 0)
      {
        ExtrudeEdge(v[0].worldPos.xyz, v[2].worldPos.xyz);
      }
 
      // Check e5 for being silhouette
-     normal = cross(e4, e5);
+     normal = cross(e5, e4);
      lightDir = lightPosWS.xyz - v[2].worldPos.xyz;
      if (dot(normal, lightDir) <= 0)
      {
@@ -545,7 +545,7 @@ void main()
      }
 
      // Check e2 for being silhouette
-     normal = cross(e2, e6);
+     normal = cross(e6, e2);
      lightDir = lightPosWS.xyz - v[4].worldPos.xyz;
      if (dot(normal, lightDir) <= 0)
      {
@@ -557,11 +557,11 @@ void main()
      gl_Position = transform * vec4((v[0].worldPos.xyz + lightDir * epsilon), 1.0);
      EmitVertex();
 
-     lightDir = (normalize(v[2].worldPos.xyz - lightPosWS.xyz));
+     lightDir = normalize(v[2].worldPos.xyz - lightPosWS.xyz);
      gl_Position = transform * vec4((v[2].worldPos.xyz + lightDir * epsilon), 1.0);
      EmitVertex();
 
-     lightDir = (normalize(v[4].worldPos.xyz - lightPosWS.xyz));
+     lightDir = normalize(v[4].worldPos.xyz - lightPosWS.xyz);
      gl_Position = transform * vec4((v[4].worldPos.xyz + lightDir * epsilon), 1.0);
      EmitVertex();
      EndPrimitive();
