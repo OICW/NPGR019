@@ -113,7 +113,7 @@ private:
   // Helper function for creating and updating the light instancing data
   void UpdateLightData();
   // Helper function for updating shader program data
-  void UpdateProgramData(GLuint program, RenderPass renderPass, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor);
+  //void UpdateProgramData(GLuint program, RenderPass renderPass, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor);
   // Helper method to update transformation uniform block
   void UpdateTransformBlock(const Camera &camera);
   // Draw the backdrop, floor and walls

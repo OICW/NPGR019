@@ -68,7 +68,7 @@ bool compileShaders()
     cleanUp();
     return false;
   }
-  uniformBlockBinding(shaderProgram[ShaderProgram::Default]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::DefaultGBuffer]);
 
   // Shader program for instanced geometry writing into the GBuffer
   shaderProgram[ShaderProgram::InstancedGBuffer] = glCreateProgram();
@@ -79,8 +79,8 @@ bool compileShaders()
     cleanUp();
     return false;
   }
-  uniformBlockBinding(shaderProgram[ShaderProgram::Instancing]);
-  uniformBlockBinding(shaderProgram[ShaderProgram::Instancing], "InstanceBuffer", 1);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancedGBuffer]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancedGBuffer], "InstanceBuffer", 1);
 
   // Shader program for ambient fullscreen light pass
   shaderProgram[ShaderProgram::AmbientLightPass] = glCreateProgram();
@@ -101,8 +101,9 @@ bool compileShaders()
     cleanUp();
     return false;
   }
-  uniformBlockBinding(shaderProgram[ShaderProgram::Instancing]);
-  uniformBlockBinding(shaderProgram[ShaderProgram::Instancing], "InstanceBuffer", 1);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancedLightPass]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancedLightPass], "InstanceBuffer", 1);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancedLightPass], "LightBuffer", 2);
 
   // Shader program for point rendering w/ constant color
   shaderProgram[ShaderProgram::PointRendering] = glCreateProgram();

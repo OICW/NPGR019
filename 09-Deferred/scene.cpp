@@ -83,9 +83,9 @@ void Scene::Init(int numCubes, int numLights)
     glBindBuffer(GL_UNIFORM_BUFFER, _instancingBuffer);
 
     // Obtain UBO index and size from the instancing shader program
-    GLuint uboIndex = glGetUniformBlockIndex(shaderProgram[ShaderProgram::Instancing], "InstanceBuffer");
+    GLuint uboIndex = glGetUniformBlockIndex(shaderProgram[ShaderProgram::InstancedGBuffer], "InstanceBuffer");
     GLint uboSize = 0;
-    glGetActiveUniformBlockiv(shaderProgram[ShaderProgram::Instancing], uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
+    glGetActiveUniformBlockiv(shaderProgram[ShaderProgram::InstancedGBuffer], uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
 
     // Describe the buffer data - we're going to change this every frame
     glBufferData(GL_UNIFORM_BUFFER, uboSize, nullptr, GL_DYNAMIC_DRAW);
@@ -95,7 +95,7 @@ void Scene::Init(int numCubes, int numLights)
   }
 
   {
-    // Generate the lgiht buffer as Uniform Buffer Object
+    // Generate the light buffer as Uniform Buffer Object
     glGenBuffers(1, &_lightBuffer);
     glBindBuffer(GL_UNIFORM_BUFFER, _lightBuffer);
 
@@ -120,9 +120,9 @@ void Scene::Init(int numCubes, int numLights)
     // we're gonna bind this UBO for all shader programs and we're making
     // assumption that all of the UBO's used by our shader programs are
     // all the same size
-    GLuint uboIndex = glGetUniformBlockIndex(shaderProgram[ShaderProgram::Default], "TransformBlock");
+    GLuint uboIndex = glGetUniformBlockIndex(shaderProgram[ShaderProgram::DefaultGBuffer], "TransformBlock");
     GLint uboSize = 0;
-    glGetActiveUniformBlockiv(shaderProgram[ShaderProgram::Default], uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
+    glGetActiveUniformBlockiv(shaderProgram[ShaderProgram::DefaultGBuffer], uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
 
     // Describe the buffer data - we're going to change this every frame
     glBufferData(GL_UNIFORM_BUFFER, uboSize, nullptr, GL_DYNAMIC_DRAW);
@@ -309,6 +309,7 @@ void Scene::UpdateLightData()
   }
 }
 
+#if 0
 void Scene::UpdateProgramData(GLuint program, RenderPass renderPass, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor)
 {
   // Update the light position, use 4th component to pass direct light intensity
@@ -331,6 +332,7 @@ void Scene::UpdateProgramData(GLuint program, RenderPass renderPass, const Camer
     glUniform4f(lightColorLoc, lightColor.x, lightColor.y, lightColor.z, ((int)renderPass & (int)RenderPass::AmbientLight) ? lightColor.w : 0.0f);
   }
 }
+#endif
 
 void Scene::UpdateTransformBlock(const Camera &camera)
 {
@@ -513,5 +515,5 @@ void Scene::Draw(const Camera &camera, const RenderTargets &renderTargets)
   DrawAmbientPass();
 
   // Draw all the lights in the scene using the GBuffer as input outputting to the HDR buffer
-  DrawLights();
+  DrawLights(camera);
 }

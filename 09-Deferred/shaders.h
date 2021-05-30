@@ -463,7 +463,7 @@ void main()
     // Reconstruct world space normal and display it
     vec2 n = texelFetch(Normals, texel, 0).rg;
     float z = sqrt(max(1e-5, 1.0f - dot(n, n)));
-    vec3 normal = vec3(n.x, n.y, n.z);
+    vec3 normal = vec3(n.x, n.y, z);
     finalColor = normal * 0.5f + 0.5f;
   }
   else if (MODE == 3)

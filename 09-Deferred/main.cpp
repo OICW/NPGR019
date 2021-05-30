@@ -322,17 +322,19 @@ void createFramebuffer(int width, int height)
 
   // --------------------------------------------------------------------------
 
-  // Set the list of draw buffers.
-  GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
-  glDrawBuffers(1, drawBuffers);
-
-  // Check for completeness
-  GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-  if (status != GL_FRAMEBUFFER_COMPLETE)
   {
-    printf("Failed to create framebuffer: 0x%04X\n", status);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    return;
+    // Set the list of draw buffers.
+    GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
+    glDrawBuffers(1, drawBuffers);
+
+    // Check for completeness
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+    {
+      printf("Failed to create framebuffer: 0x%04X\n", status);
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      return;
+    }
   }
 
   // Bind back the window system provided framebuffer
@@ -447,15 +449,17 @@ void createFramebuffer(int width, int height)
 
   // --------------------------------------------------------------------------
 
-  // Set the list of draw buffers.
-  GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
-  glDrawBuffers(3, drawBuffers);
-
-  // Check for completeness
-  GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-  if (status != GL_FRAMEBUFFER_COMPLETE)
   {
-    printf("Failed to create framebuffer: 0x%04X\n", status);
+    // Set the list of draw buffers.
+    GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
+    glDrawBuffers(3, drawBuffers);
+
+    // Check for completeness
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+    {
+      printf("Failed to create framebuffer: 0x%04X\n", status);
+    }
   }
 
   // Bind back the window system provided framebuffer
@@ -567,7 +571,7 @@ void renderScene()
   glUseProgram(shaderProgram[ShaderProgram::Tonemapping]);
 
   // Send in the required data
-  glUniform3i(0, renderMode.displayMode);
+  glUniform1i(0, renderMode.displayMode);
 
   // Bind the GBuffer textures
   glActiveTexture(GL_TEXTURE0);
