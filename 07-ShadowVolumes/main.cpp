@@ -400,7 +400,7 @@ void shutDown()
 
   // Release the framebuffer
   glDeleteTextures(1, &renderTarget);
-  glDeleteTextures(1, &depthStencil);
+  glDeleteRenderbuffers(1, &depthStencil);
   glDeleteFramebuffers(1, &fbo);
 
   // Release the window
