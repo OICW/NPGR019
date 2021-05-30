@@ -552,6 +552,10 @@ void processInput(float dt)
 
 void renderScene()
 {
+  // Enable backface culling
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_BACK);
+
   // Draw our scene
   scene.Draw(camera, renderTargets);
 

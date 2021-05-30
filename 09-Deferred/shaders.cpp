@@ -105,16 +105,18 @@ bool compileShaders()
   uniformBlockBinding(shaderProgram[ShaderProgram::InstancedLightPass], "InstanceBuffer", 1);
   uniformBlockBinding(shaderProgram[ShaderProgram::InstancedLightPass], "LightBuffer", 2);
 
-  // Shader program for point rendering w/ constant color
-  shaderProgram[ShaderProgram::PointRendering] = glCreateProgram();
-  glAttachShader(shaderProgram[ShaderProgram::PointRendering], vertexShader[VertexShader::Point]);
-  glAttachShader(shaderProgram[ShaderProgram::PointRendering], fragmentShader[FragmentShader::SingleColor]);
-  if (!ShaderCompiler::LinkProgram(shaderProgram[ShaderProgram::PointRendering]))
+  // Shader program for light point visualization
+  shaderProgram[ShaderProgram::InstancedLightVis] = glCreateProgram();
+  glAttachShader(shaderProgram[ShaderProgram::InstancedLightVis], vertexShader[VertexShader::Light]);
+  glAttachShader(shaderProgram[ShaderProgram::InstancedLightVis], fragmentShader[FragmentShader::LightColor]);
+  if (!ShaderCompiler::LinkProgram(shaderProgram[ShaderProgram::InstancedLightVis]))
   {
     cleanUp();
     return false;
   }
-  uniformBlockBinding(shaderProgram[ShaderProgram::PointRendering]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancedLightVis]);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancedLightVis], "InstanceBuffer", 1);
+  uniformBlockBinding(shaderProgram[ShaderProgram::InstancedLightVis], "LightBuffer", 2);
 
   // Shader program for rendering tonemapping post-process
   shaderProgram[ShaderProgram::Tonemapping] = glCreateProgram();

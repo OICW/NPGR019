@@ -34,3 +34,9 @@ inline int sign(T value)
 {
   return (T(0) < value) - (value < T(0));
 }
+
+// Converts RGB values to luminuos intensity
+inline float getLuminousIntensity(glm::vec3 color)
+{
+  return 0.2126 * color.x + 0.7152 * color.y + 0.0722 * color.z;
+}

@@ -567,8 +567,9 @@ Mesh<Vertex_Pos> *Geometry::CreateIcosahedron()
   // Assume centering around origin, edge length of 2 -> circumradius is sqrt(phi + 2) = 1.902
   // phi = (1 + sqrt(5)) / 2 (golden ratio), we want circumradius of 1, so we'll need to scale
   // down the resulting geometry by factor of 1.902
-  const float unit = 1.0f;
-  const float phi = 1.618f;
+  const float scale = 1.902f;
+  const float unit = 1.0f / scale;
+  const float phi = 1.618f / scale;
 
   // Top half
   vb.push_back({-phi,  unit, 0.0f}); // 0

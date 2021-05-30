@@ -12,7 +12,7 @@ namespace ShaderProgram
 {
   enum
   {
-    DefaultGBuffer, InstancedGBuffer, AmbientLightPass, InstancedLightPass, PointRendering, Tonemapping, NumShaderPrograms
+    DefaultGBuffer, InstancedGBuffer, AmbientLightPass, InstancedLightPass, InstancedLightVis, Tonemapping, NumShaderPrograms
   };
 }
 
@@ -29,7 +29,7 @@ namespace VertexShader
 {
   enum
   {
-    Default, Instancing, Light, Point, ScreenQuad, NumVertexShaders
+    Default, Instancing, Light, ScreenQuad, NumVertexShaders
   };
 }
 
@@ -222,29 +222,6 @@ void main()
 }
 )",
 // ----------------------------------------------------------------------------
-// Vertex shader for point rendering
-// ----------------------------------------------------------------------------
-R"(
-#version 330 core
-
-// Uniform blocks, i.e., constants
-layout (std140) uniform TransformBlock
-{
-  // Transposed worldToView matrix - stored compactly as an array of 3 x vec4
-  mat3x4 worldToView;
-  mat4x4 projection;
-};
-
-uniform vec3 position;
-
-void main()
-{
-  // We must multiply from the left because of transposed worldToView
-  vec4 viewPos = vec4(vec4(position, 1.0f) * worldToView, 1.0f);
-  gl_Position = projection * viewPos;
-}
-)",
-// ----------------------------------------------------------------------------
 // Fullscreen quad vertex shader
 // ----------------------------------------------------------------------------
 R"(
@@ -272,7 +249,7 @@ namespace FragmentShader
 {
   enum
   {
-    GBuffer, AmbientPass, LightPass, SingleColor, Null, Tonemapping, NumFragmentShaders
+    GBuffer, AmbientPass, LightPass, LightColor, Tonemapping, NumFragmentShaders
   };
 }
 
@@ -392,7 +369,7 @@ struct LightData
 layout (std140) uniform LightBuffer
 {
   // 1024 lights should be enough for everybody, must not exceed 4096 vec4 registers
-  LightData instanceBuffer[1024];
+  LightData lightBuffer[1024];
 };
 
 // Vertex inputs
@@ -411,30 +388,40 @@ void main()
 }
 )",
 // ----------------------------------------------------------------------------
-// Single color pixel shader
+// Light color pixel shader - for light visualization
 // ----------------------------------------------------------------------------
 R"(
 #version 330 core
 
-// Input color
-uniform vec3 color;
+// Must match the structure on the CPU side
+struct LightData
+{
+  // Light position in world space
+  vec4 position;
+  // Light color and intensity
+  vec4 color;
+};
+
+// Uniform buffer used for lights
+layout (std140) uniform LightBuffer
+{
+  // 1024 lights should be enough for everybody, must not exceed 4096 vec4 registers
+  LightData lightBuffer[1024];
+};
+
+// Vertex inputs
+in VertexData
+{
+  flat int lightID;
+} vIn;
 
 // Output color
 out vec4 oColor;
 
 void main()
 {
-  oColor = vec4(color.rgb, 1.0f);
-}
-)",
-// ----------------------------------------------------------------------------
-// Null fragment shader shader for depth and stencil passes
-// ----------------------------------------------------------------------------
-R"(
-#version 330 core
-
-void main()
-{
+  // Fetch the light color and output it
+  oColor = vec4(lightBuffer[vIn.lightID].color.rgb, 1.0f);
 }
 )",
 // ----------------------------------------------------------------------------

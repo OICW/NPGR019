@@ -254,14 +254,14 @@ void Scene::UpdateInstanceData()
 
   // Update the buffer data using mapping
   void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-  memcpy(ptr, &*instanceData.begin(), (_numCubes + 1) * sizeof(InstanceData));
+  memcpy(ptr, &*instanceData.begin(), _numCubes * sizeof(InstanceData));
   glUnmapBuffer(GL_UNIFORM_BUFFER);
 
   // Unbind the instancing buffer
   glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
 }
 
-void Scene::UpdateLightData()
+void Scene::UpdateLightData(bool visualization)
 {
   // Create transformation matrix
   glm::mat4x4 transformation = glm::mat4x4(1.0f);
@@ -270,16 +270,34 @@ void Scene::UpdateLightData()
   static std::vector<InstanceData> instanceData(MAX_INSTANCES);
   static std::vector<LightData> lightData(MAX_INSTANCES);
 
+  // Attenuation for visualization purposes
+  const float attenuation = visualization ? 0.05f : 1.0f;
+
   // For all lights
+  float scale;
   for (int i = 0; i < _numLights; ++i)
   {
+    // Apply scaling based on light intensity
+    if (visualization)
+    {
+      scale = 0.1f;
+    }
+    else
+    {
+      // Calculate scaling factor based on the light intensity
+      float luminousIntensity = getLuminousIntensity(_lights[i].color);
+      float cutoff = 0.1f;
+      scale = sqrt(luminousIntensity / cutoff);
+    }
+
     // Fill the tranformation matrix
     transformation = glm::translate(_lights[i].position);
+    transformation *= glm::scale(glm::vec3(scale));
 
     instanceData[i].transformation = glm::transpose(transformation);
 
     lightData[i].position = glm::vec4(_lights[i].position, 1.0f);
-    lightData[i].color = glm::vec4(_lights[i].color);
+    lightData[i].color = glm::vec4(_lights[i].color * attenuation);
   }
 
   {
@@ -308,31 +326,6 @@ void Scene::UpdateLightData()
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
   }
 }
-
-#if 0
-void Scene::UpdateProgramData(GLuint program, RenderPass renderPass, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor)
-{
-  // Update the light position, use 4th component to pass direct light intensity
-  if ((int)renderPass & ((int)RenderPass::ShadowVolume | (int)RenderPass::LightPass))
-  {
-    GLint lightLoc = glGetUniformLocation(program, "lightPosWS");
-    glUniform4f(lightLoc, lightPosition.x, lightPosition.y, lightPosition.z, ((int)renderPass & (int)RenderPass::DirectLight) ? 1.0f : 0.0f);
-  }
-
-  // Update view position and light color
-  if ((int)renderPass & (int)RenderPass::LightPass)
-  {
-    // Update the view position
-    GLint viewPosLoc = glGetUniformLocation(program, "viewPosWS");
-    glm::vec4 viewPos = camera.GetViewToWorld()[3];
-    glUniform4fv(viewPosLoc, 1, glm::value_ptr(viewPos));
-
-    // Update the light color, 4th component controls ambient light intensity
-    GLint lightColorLoc = glGetUniformLocation(program, "lightColor");
-    glUniform4f(lightColorLoc, lightColor.x, lightColor.y, lightColor.z, ((int)renderPass & (int)RenderPass::AmbientLight) ? lightColor.w : 0.0f);
-  }
-}
-#endif
 
 void Scene::UpdateTransformBlock(const Camera &camera)
 {
@@ -394,6 +387,9 @@ void Scene::DrawBackground(const Camera &camera)
 
 void Scene::DrawObjects(const Camera &camera)
 {
+  // Update the instancing buffer
+  UpdateInstanceData();
+
   GLuint program = shaderProgram[ShaderProgram::InstancedGBuffer];
 
   // Bind the shader program and update its data
@@ -411,36 +407,36 @@ void Scene::DrawObjects(const Camera &camera)
 
   // Unbind the instancing buffer
   glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
-
-  // --------------------------------------------------------------------------
-
-#if 0
-  // Draw the light object during the ambient pass
-  if ((int)renderPass & (int)RenderPass::AmbientLight)
-  {
-    glUseProgram(shaderProgram[ShaderProgram::PointRendering]);
-
-    // Update the light position
-    GLint loc = glGetUniformLocation(shaderProgram[ShaderProgram::PointRendering], "position");
-    glUniform3fv(loc, 1, glm::value_ptr(lightPosition));
-
-    // Update the color
-    loc = glGetUniformLocation(shaderProgram[ShaderProgram::PointRendering], "color");
-    glUniform3fv(loc, 1, glm::value_ptr(lightColor * 0.05f));
-
-    // Disable blending for lights
-    glDisable(GL_BLEND);
-
-    glPointSize(10.0f);
-    glBindVertexArray(_vao);
-    glDrawArrays(GL_POINTS, 0, 1);
-  }
-#endif
 }
 
 void Scene::DrawLights(const Camera &camera)
 {
+  // Update the instancing and light buffer
+  UpdateLightData();
 
+  GLuint program = shaderProgram[ShaderProgram::InstancedLightPass];
+
+  // Bind the shader program and update its data
+  glUseProgram(program);
+
+  // Bind the instancing buffer to the index 1 and light buffer to the index 2
+  glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
+  glBindBufferBase(GL_UNIFORM_BUFFER, 2, _lightBuffer);
+
+  // Draw lights
+  glBindVertexArray(_icosahedron->GetVAO());
+  glDrawElementsInstanced(GL_TRIANGLES, _icosahedron->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), _numLights);
+
+  // --------------------------------------------------------------------------
+  // Draw light points
+  UpdateLightData(true);
+
+  // Bind the instancing buffer to the index 1 and light buffer to the index 2
+  glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
+  glBindBufferBase(GL_UNIFORM_BUFFER, 2, _lightBuffer);
+
+  glUseProgram(shaderProgram[ShaderProgram::InstancedLightVis]);
+  glDrawElementsInstanced(GL_TRIANGLES, _icosahedron->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), _numLights);
 }
 
 void Scene::DrawAmbientPass()
@@ -451,7 +447,7 @@ void Scene::DrawAmbientPass()
   glUseProgram(program);
 
   // Set the global ambient light
-  float lightIntensity = 0.1;
+  const float lightIntensity = 0.1f;
   glUniform3f(0, lightIntensity, lightIntensity, lightIntensity);
 
   // Draw fullscreen quad - textures already bound outside the scope
@@ -462,16 +458,6 @@ void Scene::DrawAmbientPass()
 void Scene::Draw(const Camera &camera, const RenderTargets &renderTargets)
 {
   UpdateTransformBlock(camera);
-
-  // Update the scene
-  UpdateInstanceData();
-
-  // Disable MSAA rendering
-  glDisable(GL_MULTISAMPLE);
-
-  // Enable backface culling
-  glEnable(GL_CULL_FACE);
-  glCullFace(GL_BACK);
 
   // Enable depth test, clamp, and write
   glEnable(GL_DEPTH_TEST);

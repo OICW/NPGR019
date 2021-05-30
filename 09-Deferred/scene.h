@@ -110,8 +110,8 @@ private:
   void BindTextures(const GLuint &diffuse, const GLuint &normal, const GLuint &specular, const GLuint &occlusion);
   // Helper function for creating and updating the instance data
   void UpdateInstanceData();
-  // Helper function for creating and updating the light instancing data
-  void UpdateLightData();
+  // Helper function for creating and updating light data
+  void UpdateLightData(bool visualization = false);
   // Helper function for updating shader program data
   //void UpdateProgramData(GLuint program, RenderPass renderPass, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor);
   // Helper method to update transformation uniform block
