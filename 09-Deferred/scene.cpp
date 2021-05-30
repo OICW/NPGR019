@@ -155,10 +155,26 @@ void Scene::Init(int numCubes, int numLights)
   // Ambient intensity for the lights
   const float ambientIntentsity = 1e-3f;
 
+  // Calculate radius based on the light intensity
+  auto getLightRadius = [](float r, float g, float b) -> float
+  {
+    const float cutoff = 0.1f;
+    float luminousIntensity = getLuminousIntensity(glm::vec3(r, g, b));
+    return sqrt(luminousIntensity / cutoff);
+  };
+
   // Position & color of the first light
   _lights.reserve(_numLights);
   glm::vec4 p = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-  _lights.push_back({glm::vec3(-3.0f, 3.0f, 0.0f), glm::vec4(100.0f, 100.0f, 100.0f, ambientIntentsity), p});
+
+  float r = 100.0f;
+  float g = 100.0f;
+  float b = 100.0f;
+  glm::vec4 c = glm::vec4(r, g, b, ambientIntentsity);
+
+  float radius = getLightRadius(r, g, b);
+
+  _lights.push_back({glm::vec3(-3.0f, 3.0f, 0.0f), c, p, radius});
 
   // Generate random positions for the rest of the lights
   for (int i = 1; i < _numLights; ++i)
@@ -167,14 +183,16 @@ void Scene::Init(int numCubes, int numLights)
     float y = getRandom(-2.0f, 2.0f);
     float z = getRandom(-2.0f, 2.0f);
     float w = getRandom(-2.0f, 2.0f);
-    glm::vec4 p = glm::vec4(x, y, z, w);
+    p = glm::vec4(x, y, z, w);
 
-    float r = getRandom(0.0f, 50.0f);
-    float g = getRandom(0.0f, 50.0f);
-    float b = getRandom(0.0f, 50.0f);
-    glm::vec4 c = glm::vec4(r, g, b, ambientIntentsity);
+    r = getRandom(0.0f, 50.0f);
+    g = getRandom(0.0f, 50.0f);
+    b = getRandom(0.0f, 50.0f);
+    c = glm::vec4(r, g, b, ambientIntentsity);
 
-    _lights.push_back({offset + lissajous(p, 0.0f) * scale, c, p});
+    radius = getLightRadius(r, g, b);
+
+    _lights.push_back({offset + lissajous(p, 0.0f) * scale, c, p, radius});
   }
 
   // --------------------------------------------------------------------------
@@ -193,18 +211,41 @@ void Scene::Init(int numCubes, int numLights)
   _loadedTextures[LoadedTextures::Occlusion] = Textures::LoadTexture("data/Terracotta_Tiles_002_ambientOcclusion.jpg", false);
 }
 
-void Scene::Update(float dt)
+void Scene::Update(float dt, const Camera &camera)
 {
   // Animation timer
   static float t = 0.0f;
 
+  glm::vec3 cameraPos = camera.GetViewToWorld()[3];
+
+  _insideLights.clear();
+  _outsideLights.clear();
+
+  // Assigns light set based on camera position, i.e., camera inside light volume or outside
+  auto assignLightSet = [this](const glm::vec3 cameraPosition, int lightIdx)
+  {
+    glm::vec3 d = _lights[lightIdx].position - cameraPosition;
+    float rSqr = _lights[lightIdx].radius * _lights[lightIdx].radius;
+
+    if (glm::dot(d, d) < rSqr)
+    {
+      _insideLights.push_back(lightIdx);
+    }
+    else
+    {
+      _outsideLights.push_back(lightIdx);
+    }
+  };
+
   // Treat the first light as a special case with offset
   _lights[0].position = glm::vec3(-3.0f, 2.0f, 0.0f) + lissajous(_lights[0].movement, t);
+  assignLightSet(cameraPos, 0);
 
   // Update the rest of the lights
   for (int i = 1; i < _numLights; ++i)
   {
     _lights[i].position = offset + lissajous(_lights[i].movement, t) * scale;
+    assignLightSet(cameraPos, i);
   }
 
   // Update the animation timer
@@ -249,6 +290,9 @@ void Scene::UpdateInstanceData()
     instanceData[i].transformation = glm::transpose(transformation);
   }
 
+  // Start working with instancing buffer
+  glBindBuffer(GL_UNIFORM_BUFFER, _instancingBuffer);
+
   // Bind the instancing buffer to the index 1
   glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
 
@@ -257,11 +301,11 @@ void Scene::UpdateInstanceData()
   memcpy(ptr, &*instanceData.begin(), _numCubes * sizeof(InstanceData));
   glUnmapBuffer(GL_UNIFORM_BUFFER);
 
-  // Unbind the instancing buffer
-  glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
+  // Unbind the uniform buffer target
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-void Scene::UpdateLightData(bool visualization)
+void Scene::UpdateLightData(LightSet lightSet, bool visualization)
 {
   // Create transformation matrix
   glm::mat4x4 transformation = glm::mat4x4(1.0f);
@@ -273,7 +317,7 @@ void Scene::UpdateLightData(bool visualization)
   // Attenuation for visualization purposes
   const float attenuation = visualization ? 0.05f : 1.0f;
 
-  // For all lights
+  // For all lights - TODO: change this based on the light set
   float scale;
   for (int i = 0; i < _numLights; ++i)
   {
@@ -284,10 +328,7 @@ void Scene::UpdateLightData(bool visualization)
     }
     else
     {
-      // Calculate scaling factor based on the light intensity
-      float luminousIntensity = getLuminousIntensity(_lights[i].color);
-      float cutoff = 0.1f;
-      scale = sqrt(luminousIntensity / cutoff);
+      scale = _lights[i].radius;
     }
 
     // Fill the tranformation matrix
@@ -301,6 +342,9 @@ void Scene::UpdateLightData(bool visualization)
   }
 
   {
+    // Start working with instancing buffer
+    glBindBuffer(GL_UNIFORM_BUFFER, _instancingBuffer);
+
     // Bind the instancing buffer to the index 1
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
 
@@ -309,11 +353,14 @@ void Scene::UpdateLightData(bool visualization)
     memcpy(ptr, &*instanceData.begin(), (_numLights) * sizeof(InstanceData));
     glUnmapBuffer(GL_UNIFORM_BUFFER);
 
-    // Unbind the instancing buffer
-    glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
+    // Unbind the uniform buffer target
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
   }
 
   {
+    // Start working with instancing buffer
+    glBindBuffer(GL_UNIFORM_BUFFER, _instancingBuffer);
+
     // Bind the instancing buffer to the index 2
     glBindBufferBase(GL_UNIFORM_BUFFER, 2, _lightBuffer);
 
@@ -322,8 +369,8 @@ void Scene::UpdateLightData(bool visualization)
     memcpy(ptr, &*lightData.begin(), (_numLights) * sizeof(LightData));
     glUnmapBuffer(GL_UNIFORM_BUFFER);
 
-    // Unbind the instancing buffer
-    glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
+    // Unbind the uniform buffer target
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
   }
 }
 
@@ -349,7 +396,7 @@ void Scene::UpdateTransformBlock(const Camera &camera)
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-void Scene::DrawBackground(const Camera &camera)
+void Scene::DrawBackground()
 {
   GLuint program = shaderProgram[ShaderProgram::DefaultGBuffer];
 
@@ -385,7 +432,7 @@ void Scene::DrawBackground(const Camera &camera)
   glDrawElements(GL_TRIANGLES, _quad->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
 }
 
-void Scene::DrawObjects(const Camera &camera)
+void Scene::DrawObjects()
 {
   // Update the instancing buffer
   UpdateInstanceData();
@@ -395,48 +442,44 @@ void Scene::DrawObjects(const Camera &camera)
   // Bind the shader program and update its data
   glUseProgram(program);
 
-  // Bind the instancing buffer to the index 1
-  glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
-
   // Bind textures
    BindTextures(_loadedTextures[LoadedTextures::Diffuse], _loadedTextures[LoadedTextures::Normal], _loadedTextures[LoadedTextures::Specular], _loadedTextures[LoadedTextures::Occlusion]);
 
   // Draw cubes
   glBindVertexArray(_cube->GetVAO());
   glDrawElementsInstanced(GL_TRIANGLES, _cube->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), _numCubes);
-
-  // Unbind the instancing buffer
-  glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
 }
 
-void Scene::DrawLights(const Camera &camera)
+void Scene::DrawLights()
 {
-  // Update the instancing and light buffer
-  UpdateLightData();
+  auto lightPass = [this](LightSet lightSet, bool visualize)
+  {
+    // Update the instancing and light buffer
+    UpdateLightData(lightSet, visualize);
 
-  GLuint program = shaderProgram[ShaderProgram::InstancedLightPass];
+    glBindVertexArray(_icosahedron->GetVAO());
+    glDrawElementsInstanced(GL_TRIANGLES, _icosahedron->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), _numLights);
+  };
 
-  // Bind the shader program and update its data
-  glUseProgram(program);
+  // Bind the shader program for instanced light passes
+  glUseProgram(shaderProgram[ShaderProgram::InstancedLightPass]);
 
-  // Bind the instancing buffer to the index 1 and light buffer to the index 2
-  glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
-  glBindBufferBase(GL_UNIFORM_BUFFER, 2, _lightBuffer);
+  // Draw lights w/o depth testing (we'll do it in the shader ourselves, kinda)
+  glDisable(GL_DEPTH_TEST);
 
-  // Draw lights
-  glBindVertexArray(_icosahedron->GetVAO());
-  glDrawElementsInstanced(GL_TRIANGLES, _icosahedron->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), _numLights);
+  // Draw light volumes
+  lightPass(LightSet::Inside, false);
+  lightPass(LightSet::Outside, false);
 
   // --------------------------------------------------------------------------
   // Draw light points
-  UpdateLightData(true);
 
-  // Bind the instancing buffer to the index 1 and light buffer to the index 2
-  glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
-  glBindBufferBase(GL_UNIFORM_BUFFER, 2, _lightBuffer);
-
+  // Bind the shader program for light point visualization
   glUseProgram(shaderProgram[ShaderProgram::InstancedLightVis]);
-  glDrawElementsInstanced(GL_TRIANGLES, _icosahedron->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), _numLights);
+
+  // Draw light volumes with depth test enabled
+  glEnable(GL_DEPTH_TEST);
+  lightPass(LightSet::All, true);
 }
 
 void Scene::DrawAmbientPass()
@@ -475,8 +518,8 @@ void Scene::Draw(const Camera &camera, const RenderTargets &renderTargets)
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // Render the scene into the GBuffer only
-  DrawBackground(camera);
-  DrawObjects(camera);
+  DrawBackground();
+  DrawObjects();
 
   // We primed the depth buffer, no need to write to it anymore
   glDepthMask(GL_FALSE);
@@ -513,7 +556,7 @@ void Scene::Draw(const Camera &camera, const RenderTargets &renderTargets)
   DrawAmbientPass();
 
   // Draw all the lights in the scene using the GBuffer as input outputting to the HDR buffer
-  DrawLights(camera);
+  DrawLights();
 
   // Disable blending
   glDisable(GL_BLEND);

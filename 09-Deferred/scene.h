@@ -65,7 +65,7 @@ public:
   // Initialize the test scene
   void Init(int numCubes, int numLights);
   // Updates positions
-  void Update(float dt);
+  void Update(float dt, const Camera &camera);
   // Draw the scene
   void Draw(const Camera &camera, const RenderTargets &renderTargets);
   // Return the generic VAO for rendering
@@ -97,6 +97,14 @@ private:
     glm::vec4 color;
     // Parameters for the light movement
     glm::vec4 movement;
+    // Radius of the light based on luminous intensity and cutoff value
+    float radius;
+  };
+
+  // Which light set to update and set to instance buffer
+  enum class LightSet
+  {
+    All, Inside, Outside
   };
 
   // All is private, instance is created in GetInstance()
@@ -111,17 +119,15 @@ private:
   // Helper function for creating and updating the instance data
   void UpdateInstanceData();
   // Helper function for creating and updating light data
-  void UpdateLightData(bool visualization = false);
-  // Helper function for updating shader program data
-  //void UpdateProgramData(GLuint program, RenderPass renderPass, const Camera &camera, const glm::vec3 &lightPosition, const glm::vec4 &lightColor);
+  void UpdateLightData(LightSet lightSet, bool visualization);
   // Helper method to update transformation uniform block
   void UpdateTransformBlock(const Camera &camera);
   // Draw the backdrop, floor and walls
-  void DrawBackground(const Camera &camera);
+  void DrawBackground();
   // Draw cubes
-  void DrawObjects(const Camera &camera);
+  void DrawObjects();
   // Draw lights
-  void DrawLights(const Camera &camera);
+  void DrawLights();
   // Draw the ambient light fullscreen pass
   void DrawAmbientPass();
 
@@ -135,8 +141,12 @@ private:
   std::vector<glm::vec3> _cubePositions;
   // Number of lights in the scene
   int _numLights;
-  // Lights positions
+  // All lights lights data
   std::vector<Light> _lights;
+  // Indices of lights incident with camera
+  std::vector<int> _insideLights;
+  // Indices of lights well outside the camera
+  std::vector<int> _outsideLights;
   // General use VAO
   GLuint _vao = 0;
   // Quad instance

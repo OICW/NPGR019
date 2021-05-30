@@ -302,6 +302,32 @@ void createFramebuffer(int width, int height)
   glBindFramebuffer(GL_FRAMEBUFFER, renderTargets.hdrFbo);
 
   // --------------------------------------------------------------------------
+  // Depth/stencil buffer texture (shared between both framebuffers):
+  // --------------------------------------------------------------------------
+
+  // Delete it if necessary
+  if (glIsTexture(renderTargets.depthStencil))
+  {
+    glDeleteTextures(1, &renderTargets.depthStencil);
+    renderTargets.depthStencil = 0;
+  }
+
+  // Create the depth-stencil name
+  if (renderTargets.depthStencil == 0)
+  {
+    glGenTextures(1, &renderTargets.depthStencil);
+  }
+
+  // Internal format, determines precision, possible choices (depth only)
+  // GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32, GL_DEPTH_COMPONENT32F
+  GLint format = GL_DEPTH_COMPONENT32F;
+  glBindTexture(GL_TEXTURE_2D, renderTargets.depthStencil);
+  glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, renderTargets.depthStencil, 0);
+
+  // --------------------------------------------------------------------------
   // Render target texture:
   // --------------------------------------------------------------------------
 
@@ -354,30 +380,7 @@ void createFramebuffer(int width, int height)
   // Bind it and recreate textures
   glBindFramebuffer(GL_FRAMEBUFFER, renderTargets.gBufferFbo);
 
-  // --------------------------------------------------------------------------
-  // Depth/stencil buffer texture:
-  // --------------------------------------------------------------------------
-
-  // Delete it if necessary
-  if (glIsTexture(renderTargets.depthStencil))
-  {
-    glDeleteTextures(1, &renderTargets.depthStencil);
-    renderTargets.depthStencil = 0;
-  }
-
-  // Create the depth-stencil name
-  if (renderTargets.depthStencil == 0)
-  {
-    glGenTextures(1, &renderTargets.depthStencil);
-  }
-
-  // Internal format, determines precision, possible choices (depth only)
-  // GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32, GL_DEPTH_COMPONENT32F
-  GLint format = GL_DEPTH_COMPONENT32F;
-  glBindTexture(GL_TEXTURE_2D, renderTargets.depthStencil);
-  glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  // Bind the depth/stencil texture to it as well
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, renderTargets.depthStencil, 0);
 
   // --------------------------------------------------------------------------
@@ -632,8 +635,7 @@ void mainLoop()
     processInput(dt);
 
     // Update scene
-    if (animate)
-      scene.Update(dt);
+    scene.Update(animate ? dt : 0.0f, camera);
 
     // Render the scene
     renderScene();
@@ -662,7 +664,7 @@ int main()
   }
 
   // Scene initialization
-  scene.Init(10, 5);
+  scene.Init(10, 1);
 
   // Enter the application main loop
   mainLoop();
