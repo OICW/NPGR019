@@ -611,14 +611,10 @@ Mesh<Vertex_Pos> *Geometry::CreateIcosahedron()
 
   ib.push_back(6);
   ib.push_back(7);
-  ib.push_back(1);
+  ib.push_back(3);
 
   ib.push_back(2);
   ib.push_back(6);
-  ib.push_back(3);
-
-  ib.push_back(0);
-  ib.push_back(1);
   ib.push_back(3);
 
   ib.push_back(2);
@@ -668,8 +664,8 @@ Mesh<Vertex_Pos> *Geometry::CreateIcosahedron()
   ib.push_back(9);
 
   ib.push_back(10);
-  ib.push_back(6);
   ib.push_back(9);
+  ib.push_back(6);
 
   ib.push_back(10);
   ib.push_back(11);
