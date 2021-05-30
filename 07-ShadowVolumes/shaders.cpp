@@ -66,7 +66,7 @@ bool compileShaders()
     }
   }
 
-  // Compile all geomeyry shaders
+  // Compile all geometry shaders
   for (int i = 0; i < GeometryShader::NumGeometryShaders; ++i)
   {
     geometryShader[i] = ShaderCompiler::CompileShader(gsSource, i, GL_GEOMETRY_SHADER);
