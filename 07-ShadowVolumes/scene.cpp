@@ -234,7 +234,7 @@ void Scene::UpdateInstanceData()
 
   // Update the buffer data using mapping
   void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-  memcpy(ptr, &*instanceData.begin(), (_numCubes + 1) * sizeof(InstanceData));
+  memcpy(ptr, &*instanceData.begin(), _numCubes * sizeof(InstanceData));
   glUnmapBuffer(GL_UNIFORM_BUFFER);
 
   // Unbind the instancing buffer
