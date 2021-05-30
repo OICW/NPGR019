@@ -245,6 +245,124 @@ Mesh<Vertex_Pos_Col> *Geometry::CreateCubeColorShared()
   return mesh;
 }
 
+Mesh<Vertex_Pos> *Geometry::CreateCubeAdjacency()
+{
+  // Create the vertex buffer for a unit cube
+  std::vector<Vertex_Pos> vb;
+  vb.reserve(8);
+
+  // Top base
+  vb.push_back({-0.5f,  0.5f, -0.5f});
+  vb.push_back({ 0.5f,  0.5f, -0.5f});
+  vb.push_back({ 0.5f,  0.5f,  0.5f});
+  vb.push_back({-0.5f,  0.5f,  0.5f});
+
+  // Bottom base
+  vb.push_back({ 0.5f, -0.5f, -0.5f});
+  vb.push_back({-0.5f, -0.5f, -0.5f});
+  vb.push_back({-0.5f, -0.5f,  0.5f});
+  vb.push_back({ 0.5f, -0.5f,  0.5f});
+
+  // Fill in the index buffer
+  std::vector<GLuint> ib;
+  ib.reserve(72);
+
+  // Top face
+  ib.push_back(0);
+  ib.push_back(5); // Adjacent vertex
+  ib.push_back(1);
+  ib.push_back(4); // Adjacent vertex
+  ib.push_back(2);
+  ib.push_back(3); // Adjacent vertex
+
+  ib.push_back(2);
+  ib.push_back(7); // Adjacent vertex
+  ib.push_back(3);
+  ib.push_back(6); // Adjacent vertex
+  ib.push_back(0);
+  ib.push_back(1); // Adjacent vertex
+
+  // Bottom face
+  ib.push_back(4);
+  ib.push_back(1); // Adjacent vertex
+  ib.push_back(5);
+  ib.push_back(0); // Adjacent vertex
+  ib.push_back(6);
+  ib.push_back(7); // Adjacent vertex
+
+  ib.push_back(6);
+  ib.push_back(3); // Adjacent vertex
+  ib.push_back(7);
+  ib.push_back(2); // Adjacent vertex
+  ib.push_back(4);
+  ib.push_back(5); // Adjacent vertex
+
+  // Front face
+  ib.push_back(5);
+  ib.push_back(6); // Adjacent vertex
+  ib.push_back(4);
+  ib.push_back(2); // Adjacent vertex
+  ib.push_back(1);
+  ib.push_back(0); // Adjacent vertex
+
+  ib.push_back(1);
+  ib.push_back(2); // Adjacent vertex
+  ib.push_back(0);
+  ib.push_back(6); // Adjacent vertex
+  ib.push_back(5);
+  ib.push_back(4); // Adjacent vertex
+
+  // Back face
+  ib.push_back(7);
+  ib.push_back(4); // Adjacent vertex
+  ib.push_back(6);
+  ib.push_back(0); // Adjacent vertex
+  ib.push_back(3);
+  ib.push_back(2); // Adjacent vertex
+
+  ib.push_back(3);
+  ib.push_back(0); // Adjacent vertex
+  ib.push_back(2);
+  ib.push_back(4); // Adjacent vertex
+  ib.push_back(7);
+  ib.push_back(6); // Adjacent vertex
+
+  // Left face
+  ib.push_back(6);
+  ib.push_back(4); // Adjacent vertex
+  ib.push_back(5);
+  ib.push_back(1); // Adjacent vertex
+  ib.push_back(0);
+  ib.push_back(3); // Adjacent vertex
+
+  ib.push_back(0);
+  ib.push_back(2); // Adjacent vertex
+  ib.push_back(3);
+  ib.push_back(7); // Adjacent vertex
+  ib.push_back(6);
+  ib.push_back(5); // Adjacent vertex
+
+  // Right face
+  ib.push_back(4);
+  ib.push_back(6); // Adjacent vertex
+  ib.push_back(7);
+  ib.push_back(3); // Adjacent vertex
+  ib.push_back(2);
+  ib.push_back(1); // Adjacent vertex
+
+  ib.push_back(2);
+  ib.push_back(0); // Adjacent vertex
+  ib.push_back(1);
+  ib.push_back(5); // Adjacent vertex
+  ib.push_back(4);
+  ib.push_back(7); // Adjacent vertex
+
+  // Create, initialize and return the mesh
+  Mesh<Vertex_Pos> *mesh = new Mesh<Vertex_Pos>();
+  mesh->Init(vb, ib);
+  return mesh;
+}
+
 Mesh<Vertex_Pos_Tex> *Geometry::CreateCubeTex()
 {
   // Create the vertex buffer for a unit cube
@@ -311,7 +429,7 @@ Mesh<Vertex_Pos_Tex> *Geometry::CreateCubeTex()
   return mesh;
 }
 
-Mesh<Vertex_Pos_Nrm_Tgt_Tex> *Geometry::CreateCubeNormalTangentTex(bool createAdjacencyInfo)
+Mesh<Vertex_Pos_Nrm_Tgt_Tex> *Geometry::CreateCubeNormalTangentTex()
 {
   // Create the vertex buffer for a unit cube
   std::vector<Vertex_Pos_Nrm_Tgt_Tex> vb;
@@ -355,115 +473,20 @@ Mesh<Vertex_Pos_Nrm_Tgt_Tex> *Geometry::CreateCubeNormalTangentTex(bool createAd
 
   // Fill in the index buffer
   std::vector<GLuint> ib;
-  if (createAdjacencyInfo)
+  ib.reserve(36);
+  for (int face = 0; face < 6; ++face)
   {
-    // Top face
-    ib.push_back(0);
-    ib.push_back(8); // Adjacent vertex
-    ib.push_back(1);
-    ib.push_back(20); // Adjacent vertex
-    ib.push_back(2);
-    ib.push_back(3); // Adjacent vertex
+    GLuint baseIndex = 4 * face;
 
-    ib.push_back(2);
-    ib.push_back(12); // Adjacent vertex
-    ib.push_back(3);
-    ib.push_back(16); // Adjacent vertex
-    ib.push_back(0);
-    ib.push_back(1); // Adjacent vertex
+    // One triangle
+    ib.push_back(baseIndex);
+    ib.push_back(baseIndex + 1);
+    ib.push_back(baseIndex + 2);
 
-    // Bottom face
-    ib.push_back(4);
-    ib.push_back(10); // Adjacent vertex
-    ib.push_back(5);
-    ib.push_back(18); // Adjacent vertex
-    ib.push_back(6);
-    ib.push_back(7); // Adjacent vertex
-
-    ib.push_back(6);
-    ib.push_back(14); // Adjacent vertex
-    ib.push_back(7);
-    ib.push_back(22); // Adjacent vertex
-    ib.push_back(4);
-    ib.push_back(5); // Adjacent vertex
-
-    // Front face
-    ib.push_back(8);
-    ib.push_back(6); // Adjacent vertex
-    ib.push_back(9);
-    ib.push_back(22); // Adjacent vertex
-    ib.push_back(10);
-    ib.push_back(11); // Adjacent vertex
-
-    ib.push_back(10);
-    ib.push_back(2); // Adjacent vertex
-    ib.push_back(11);
-    ib.push_back(16); // Adjacent vertex
-    ib.push_back(8);
-    ib.push_back(9); // Adjacent vertex
-
-    // Back face
-    ib.push_back(12);
-    ib.push_back(4); // Adjacent vertex
-    ib.push_back(13);
-    ib.push_back(18); // Adjacent vertex
-    ib.push_back(14);
-    ib.push_back(15); // Adjacent vertex
-
-    ib.push_back(14);
-    ib.push_back(0); // Adjacent vertex
-    ib.push_back(15);
-    ib.push_back(20); // Adjacent vertex
-    ib.push_back(12);
-    ib.push_back(13); // Adjacent vertex
-
-    // Left face
-    ib.push_back(16);
-    ib.push_back(4); // Adjacent vertex
-    ib.push_back(17);
-    ib.push_back(10); // Adjacent vertex
-    ib.push_back(18);
-    ib.push_back(19); // Adjacent vertex
-
-    ib.push_back(18);
-    ib.push_back(2); // Adjacent vertex
-    ib.push_back(19);
-    ib.push_back(12); // Adjacent vertex
-    ib.push_back(16);
-    ib.push_back(17); // Adjacent vertex
-
-    // Right face
-    ib.push_back(20);
-    ib.push_back(6); // Adjacent vertex
-    ib.push_back(21);
-    ib.push_back(14); // Adjacent vertex
-    ib.push_back(22);
-    ib.push_back(23); // Adjacent vertex
-
-    ib.push_back(22);
-    ib.push_back(0); // Adjacent vertex
-    ib.push_back(23);
-    ib.push_back(8); // Adjacent vertex
-    ib.push_back(20);
-    ib.push_back(21); // Adjacent vertex
-  }
-  else
-  {
-    ib.reserve(36);
-    for (int face = 0; face < 6; ++face)
-    {
-      GLuint baseIndex = 4 * face;
-
-      // One triangle
-      ib.push_back(baseIndex);
-      ib.push_back(baseIndex + 1);
-      ib.push_back(baseIndex + 2);
-
-      // Other triangle
-      ib.push_back(baseIndex + 2);
-      ib.push_back(baseIndex + 3);
-      ib.push_back(baseIndex);
-    }
+    // Other triangle
+    ib.push_back(baseIndex + 2);
+    ib.push_back(baseIndex + 3);
+    ib.push_back(baseIndex);
   }
 
   // Create, initialize and return the mesh

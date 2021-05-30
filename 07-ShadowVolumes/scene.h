@@ -119,7 +119,7 @@ private:
   // Cube instance
   Mesh<Vertex_Pos_Nrm_Tgt_Tex> *_cube = nullptr;
   // Cube instance w/ adjacency information
-  Mesh<Vertex_Pos_Nrm_Tgt_Tex> *_cubeAdjacency = nullptr;
+  Mesh<Vertex_Pos> *_cubeAdjacency = nullptr;
   // Instancing buffer handle
   GLuint _instancingBuffer = 0;
   // Transformation matrices uniform buffer object

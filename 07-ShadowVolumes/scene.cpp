@@ -69,7 +69,7 @@ void Scene::Init(int numCubes, int numLights)
   // Prepare meshes
   _quad = Geometry::CreateQuadNormalTangentTex();
   _cube = Geometry::CreateCubeNormalTangentTex();
-  _cubeAdjacency = Geometry::CreateCubeNormalTangentTex(true);
+  _cubeAdjacency = Geometry::CreateCubeAdjacency();
 
   // Create general use VAO
   glGenVertexArrays(1, &_vao);

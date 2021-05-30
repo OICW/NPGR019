@@ -22,10 +22,12 @@ public:
   static Mesh<Vertex_Pos_Col> *CreateCubeColor();
   // Creates simple cube with colors and shared vertices
   static Mesh<Vertex_Pos_Col> *CreateCubeColorShared();
+  // Creates simple cube with shared vertices and vertex adjacency info
+  static Mesh<Vertex_Pos> *CreateCubeAdjacency();
   // Creates simple cube with texture coordinates
   static Mesh<Vertex_Pos_Tex> *CreateCubeTex();
   // Create simple cube with normals, tangents and texture coordinates
-  static Mesh<Vertex_Pos_Nrm_Tgt_Tex> *CreateCubeNormalTangentTex(bool createAdjacencyInfo = false);
+  static Mesh<Vertex_Pos_Nrm_Tgt_Tex> *CreateCubeNormalTangentTex();
   // Create tethrahedron composed from vertices
   static Mesh<Vertex_Pos_Nrm> *CreateTetrahedron();
 
