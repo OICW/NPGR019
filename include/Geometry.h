@@ -28,8 +28,10 @@ public:
   static Mesh<Vertex_Pos_Tex> *CreateCubeTex();
   // Create simple cube with normals, tangents and texture coordinates
   static Mesh<Vertex_Pos_Nrm_Tgt_Tex> *CreateCubeNormalTangentTex();
-  // Create tethrahedron composed from vertices
+  // Create tethrahedron composed from vertices with normals
   static Mesh<Vertex_Pos_Nrm> *CreateTetrahedron();
+  // Create regular icosahedron with just positions
+  static Mesh<Vertex_Pos> *CreateIcosahedron();
 
 private:
   Geometry();

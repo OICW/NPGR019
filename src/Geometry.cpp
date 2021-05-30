@@ -557,3 +557,130 @@ Mesh<Vertex_Pos_Nrm> *Geometry::CreateTetrahedron()
   mesh->Init(vb, ib);
   return mesh;
 }
+
+Mesh<Vertex_Pos> *Geometry::CreateIcosahedron()
+{
+  // Create the vertex buffer for an icosahedron
+  std::vector<Vertex_Pos> vb;
+  vb.reserve(12);
+
+  // Assume centering around origin, edge length of 2 -> circumradius is sqrt(phi + 2) = 1.902
+  // phi = (1 + sqrt(5)) / 2 (golden ratio), we want circumradius of 1, so we'll need to scale
+  // down the resulting geometry by factor of 1.902
+  const float unit = 1.0f;
+  const float phi = 1.618f;
+
+  // Top half
+  vb.push_back({-phi,  unit, 0.0f}); // 0
+  vb.push_back({0.0f,  phi, -unit}); // 1
+  vb.push_back({ phi,  unit, 0.0f}); // 2
+  vb.push_back({0.0f,  phi,  unit}); // 3
+
+  // Base plane at y = 0
+  vb.push_back({-unit, 0.0f, -phi}); // 4
+  vb.push_back({ unit, 0.0f, -phi}); // 5
+  vb.push_back({ unit, 0.0f,  phi}); // 6
+  vb.push_back({-unit, 0.0f,  phi}); // 7
+
+  // Bottom half
+  vb.push_back({-phi, -unit, 0.0f}); // 8
+  vb.push_back({0.0f, -phi,  unit}); // 9
+  vb.push_back({ phi, -unit, 0.0f}); // 10
+  vb.push_back({0.0f, -phi, -unit}); // 11
+
+  // Fill in the index buffer
+  std::vector<GLuint> ib;
+  ib.reserve(60);
+
+  // Top half
+  ib.push_back(0);
+  ib.push_back(4);
+  ib.push_back(1);
+
+  ib.push_back(0);
+  ib.push_back(1);
+  ib.push_back(3);
+
+  ib.push_back(0);
+  ib.push_back(3);
+  ib.push_back(7);
+
+  ib.push_back(4);
+  ib.push_back(5);
+  ib.push_back(1);
+
+  ib.push_back(6);
+  ib.push_back(7);
+  ib.push_back(1);
+
+  ib.push_back(2);
+  ib.push_back(6);
+  ib.push_back(3);
+
+  ib.push_back(0);
+  ib.push_back(1);
+  ib.push_back(3);
+
+  ib.push_back(2);
+  ib.push_back(3);
+  ib.push_back(1);
+
+  ib.push_back(2);
+  ib.push_back(1);
+  ib.push_back(5);
+
+  // Middle sides
+  ib.push_back(0);
+  ib.push_back(7);
+  ib.push_back(8);
+
+  ib.push_back(0);
+  ib.push_back(8);
+  ib.push_back(4);
+
+  ib.push_back(2);
+  ib.push_back(5);
+  ib.push_back(10);
+
+  ib.push_back(2);
+  ib.push_back(10);
+  ib.push_back(6);
+
+  // Bottom half
+  ib.push_back(8);
+  ib.push_back(7);
+  ib.push_back(9);
+
+  ib.push_back(8);
+  ib.push_back(9);
+  ib.push_back(11);
+
+  ib.push_back(8);
+  ib.push_back(11);
+  ib.push_back(4);
+
+  ib.push_back(5);
+  ib.push_back(4);
+  ib.push_back(11);
+
+  ib.push_back(7);
+  ib.push_back(6);
+  ib.push_back(9);
+
+  ib.push_back(10);
+  ib.push_back(6);
+  ib.push_back(9);
+
+  ib.push_back(10);
+  ib.push_back(11);
+  ib.push_back(9);
+
+  ib.push_back(10);
+  ib.push_back(5);
+  ib.push_back(11);
+
+  // Create, initialize and return the mesh
+  Mesh<Vertex_Pos> *mesh = new Mesh<Vertex_Pos>();
+  mesh->Init(vb, ib);
+  return mesh;
+}
