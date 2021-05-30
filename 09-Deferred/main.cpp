@@ -170,20 +170,25 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
   if (key == GLFW_KEY_2 && action == GLFW_PRESS)
   {
-    renderMode.displayMode = DisplayMode::Color; // Colors buffer
+    renderMode.displayMode = DisplayMode::Depth; // Material occlusion
   }
 
   if (key == GLFW_KEY_3 && action == GLFW_PRESS)
   {
-    renderMode.displayMode = DisplayMode::Normals; // Normals buffer
+    renderMode.displayMode = DisplayMode::Color; // Colors buffer
   }
 
   if (key == GLFW_KEY_4 && action == GLFW_PRESS)
   {
-    renderMode.displayMode = DisplayMode::Specular; // Material specularity
+    renderMode.displayMode = DisplayMode::Normals; // Normals buffer
   }
 
   if (key == GLFW_KEY_5 && action == GLFW_PRESS)
+  {
+    renderMode.displayMode = DisplayMode::Specular; // Material specularity
+  }
+
+  if (key == GLFW_KEY_6 && action == GLFW_PRESS)
   {
     renderMode.displayMode = DisplayMode::Occlusion; // Material occlusion
   }

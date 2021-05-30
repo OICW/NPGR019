@@ -311,7 +311,9 @@ in VertexData
 } vIn;
 
 // Fragment shader outputs
-layout (location = 0) out vec4 color;
+layout (location = 0) out vec3 oColor;
+layout (location = 1) out vec2 oNormal;
+layout (location = 2) out vec2 oMaterial;
 
 void main()
 {
@@ -325,8 +327,11 @@ void main()
   mat3 STN = {vIn.tangent, vIn.bitangent, vIn.normal};
   vec3 normal = STN * (noSample * 2.0f - 1.0f);
 
-  // TODO
-  color = vec4(albedo, 1.0f);
+  // Just output the material properties into the GBuffer:
+  // everything that we'll need to calculate lighting later on
+  oColor = albedo;
+  oNormal = normal.xy;
+  oMaterial = vec2(specSample, occlusion);
 }
 )",
 // ----------------------------------------------------------------------------
@@ -335,13 +340,37 @@ void main()
 R"(
 #version 330 core
 
+// The following is not not needed since GLSL version #430
+#extension GL_ARB_explicit_uniform_location : require
+
+// The following is not not needed since GLSL version #420
+#extension GL_ARB_shading_language_420pack : require
+
+// GBuffer input textures
+layout (binding = 0) uniform sampler2D Depth;
+layout (binding = 1) uniform sampler2D Color;
+layout (binding = 2) uniform sampler2D Normals;
+layout (binding = 3) uniform sampler2D Material;
+
 // Output color
 out vec4 oColor;
 
+// Global ambiet light intensity
+layout (location = 0) uniform vec3 ambientLight;
+
 void main()
 {
-  // TODO
-  oColor = vec4(1, 0, 1, 1.0f);
+  // Get the fragment position
+  ivec2 texel = ivec2(gl_FragCoord.xy);
+
+  // Fetch the required GBuffer data
+  vec3 albedo = texelFetch(Color, texel, 0).rgb;
+  float occlusion = texelFetch(Material, texel, 0).g;
+
+  // We're calculating here just the ambient light contribution to the scene,
+  // but we could calculate directional light here as well
+  vec3 ambient = occlusion * ambientLight.rgb;
+  oColor = vec4(albedo * ambient, 1.0f);
 }
 )",
 // ----------------------------------------------------------------------------
@@ -460,18 +489,23 @@ void main()
   }
   else if (MODE == 2)
   {
+    // Fetch the depth value and display it directly
+    finalColor = texelFetch(Depth, texel, 0).rrr;
+  }
+  else if (MODE == 3)
+  {
     // Reconstruct world space normal and display it
     vec2 n = texelFetch(Normals, texel, 0).rg;
     float z = sqrt(max(1e-5, 1.0f - dot(n, n)));
     vec3 normal = vec3(n.x, n.y, z);
     finalColor = normal * 0.5f + 0.5f;
   }
-  else if (MODE == 3)
+  else if (MODE == 4)
   {
     // Fetch the material specularity value and display it
     finalColor = texelFetch(Material, texel, 0).rrr;
   }
-  else if (MODE == 4)
+  else if (MODE == 5)
   {
     // Fetch the material occlusion value and display it
     finalColor = texelFetch(Material, texel, 0).ggg;

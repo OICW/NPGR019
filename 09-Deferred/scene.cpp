@@ -449,6 +449,14 @@ void Scene::DrawAmbientPass()
 
   // Bind the shader program and update its data
   glUseProgram(program);
+
+  // Set the global ambient light
+  float lightIntensity = 0.1;
+  glUniform3f(0, lightIntensity, lightIntensity, lightIntensity);
+
+  // Draw fullscreen quad - textures already bound outside the scope
+  glBindVertexArray(_vao);
+  glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 void Scene::Draw(const Camera &camera, const RenderTargets &renderTargets)
@@ -492,6 +500,10 @@ void Scene::Draw(const Camera &camera, const RenderTargets &renderTargets)
   // Bind the HDR framebuffer
   glBindFramebuffer(GL_FRAMEBUFFER, renderTargets.hdrFbo);
 
+  // Clear the color buffer
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+
   // Enable additive alpha blending
   glEnable(GL_BLEND);
   glBlendEquation(GL_FUNC_ADD);
@@ -516,4 +528,7 @@ void Scene::Draw(const Camera &camera, const RenderTargets &renderTargets)
 
   // Draw all the lights in the scene using the GBuffer as input outputting to the HDR buffer
   DrawLights(camera);
+
+  // Disable blending
+  glDisable(GL_BLEND);
 }
