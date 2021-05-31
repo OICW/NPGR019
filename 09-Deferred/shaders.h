@@ -390,6 +390,8 @@ in VertexData
 
 // Camera position in world space coordinates
 uniform vec4 cameraPosWS;
+// Near/far clip planes for depth reconstruction
+uniform vec2 NEAR_FAR;
 
 // Output color
 out vec4 oColor;
@@ -399,14 +401,18 @@ void main()
   ivec2 texel = ivec2(gl_FragCoord.xy);
 
   // Reconstruct the world space position using the sampled depth value
+  const float near = NEAR_FAR.x;
+  const float far = NEAR_FAR.y;
   float d = texelFetch(Depth, texel, 0).r;
+  float z = 2.0f * (near * far) / (near + far - d * (far + near));
+
   vec3 viewDirWS = normalize(vIn.viewRayWS);
-  vec3 posWS = cameraPosWS.xyz + viewDirWS * d;
+  vec3 posWS = cameraPosWS.xyz + viewDirWS * z;
 
   // Reconstruct the world space normal
   vec2 n = texelFetch(Normals, texel, 0).rg;
-  float z = sqrt(max(1e-5, 1.0f - dot(n, n)));
-  vec3 normalWS = vec3(n.x, n.y, z);
+  float nz = sqrt(max(1e-5, 1.0f - dot(n, n)));
+  vec3 normalWS = vec3(n.x, n.y, nz);
 
   // Fetch albedo and specularity
   vec3 albedo = texelFetch(Color, texel, 0).rgb;

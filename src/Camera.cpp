@@ -20,10 +20,12 @@ void Camera::SetTransformation(const glm::vec3& eye, const glm::vec3& lookAt, co
   _viewToWorld = fastMatrixInverse(_worldToView);
 }
 
-void Camera::SetProjection(float fov, float aspect, float near, float far)
+void Camera::SetProjection(float fov, float aspect, float nearClip, float farClip)
 {
   // Make sure you convert from degrees to radians as glm uses radians from 0.9.6 version
-  _projection = glm::perspective(glm::radians(fov), aspect, near, far);
+  _projection = glm::perspective(glm::radians(fov), aspect, nearClip, farClip);
+  _nearClip = nearClip;
+  _farClip = farClip;
 }
 
 void Camera::Move(MovementDirections direction, const glm::vec2& mouseMove, float dt)

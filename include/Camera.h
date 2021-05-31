@@ -36,9 +36,13 @@ public:
   // Returns const reference to the internal camera transformation inverse
   const glm::mat4x4& GetViewToWorld() const { return _viewToWorld; }
   // Sets camera projection using field of view and aspect ratio
-  void SetProjection(float fov, float aspect, float near, float far);
+  void SetProjection(float fov, float aspect, float nearClip, float farClip);
   // Returns the camera projection matrix
   const glm::mat4x4& GetProjection() const { return _projection; }
+  // Returns the camera near clip plane
+  const float GetNearClip() const { return _nearClip; }
+  // Returns the camera far clip plane
+  const float GetFarClip() const { return _farClip; }
   // Moves camera along designated directions and orients it using mouse
   void Move(MovementDirections direction, const glm::vec2& mouseMove, float dt);
 
@@ -53,5 +57,8 @@ protected:
   float _movementSpeed;
   // Camera sensitivity for mouse movement
   float _sensitivity;
-
+  // Camera near clip plane
+  float _nearClip;
+  // Camera far clip plane
+  float _farClip;
 };

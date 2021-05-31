@@ -502,9 +502,12 @@ void Scene::DrawLights(const Camera &camera)
 
   // Update the camera world space position
   GLint loc = glGetUniformLocation(program, "cameraPosWS");
-  glm::vec4 cameraPos = camera.GetViewToWorld()[3];
-  glUniform4f(loc, cameraPos.x, cameraPos.y, cameraPos.z, cameraPos.w);
+  const glm::vec4 &cameraPos = camera.GetViewToWorld()[3];
+  glUniform4fv(loc, 1, glm::value_ptr(cameraPos));
 
+  // Update the camera clip planes
+  loc = glGetUniformLocation(program, "NEAR_FAR");
+  glUniform2f(loc, camera.GetNearClip(), camera.GetFarClip());
 
   // Draw light volumes where camera is inside as back faces w/o depth test
   glCullFace(GL_FRONT);
