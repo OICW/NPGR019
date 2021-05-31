@@ -485,7 +485,7 @@ void Scene::DrawObjects()
   glDrawElementsInstanced(GL_TRIANGLES, _cube->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), _numCubes);
 }
 
-void Scene::DrawLights()
+void Scene::DrawLights(const Camera &camera)
 {
   auto lightPass = [this](LightSet lightSet, bool visualize)
   {
@@ -497,7 +497,14 @@ void Scene::DrawLights()
   };
 
   // Bind the shader program for instanced light passes
-  glUseProgram(shaderProgram[ShaderProgram::InstancedLightPass]);
+  GLuint program = shaderProgram[ShaderProgram::InstancedLightPass];
+  glUseProgram(program);
+
+  // Update the camera world space position
+  GLint loc = glGetUniformLocation(program, "cameraPosWS");
+  glm::vec4 cameraPos = camera.GetViewToWorld()[3];
+  glUniform4f(loc, cameraPos.x, cameraPos.y, cameraPos.z, cameraPos.w);
+
 
   // Draw light volumes where camera is inside as back faces w/o depth test
   glCullFace(GL_FRONT);
@@ -597,7 +604,7 @@ void Scene::Draw(const Camera &camera, const RenderTargets &renderTargets)
   DrawAmbientPass();
 
   // Draw all the lights in the scene using the GBuffer as input outputting to the HDR buffer
-  DrawLights();
+  DrawLights(camera);
 
   // Disable blending
   glDisable(GL_BLEND);

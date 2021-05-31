@@ -200,9 +200,13 @@ layout (std140) uniform InstanceBuffer
   InstanceData instanceBuffer[1024];
 };
 
+// Camera position in world space coordinates
+uniform vec4 cameraPosWS;
+
 // Vertex output
 out VertexData
 {
+  vec3 viewRayWS;
   flat int lightID;
 } vOut;
 
@@ -217,6 +221,9 @@ void main()
   // Transform vertex position, note we multiply from the left because of transposed modelToWorld
   vec4 worldPos = vec4(vec4(position.xyz, 1.0f) * modelToWorld, 1.0f);
   vec4 viewPos = vec4(worldPos * worldToView, 1.0f);
+
+  // Output the WS view ray towards the far plane
+  vOut.viewRayWS = (worldPos - cameraPosWS).xyz;
 
   gl_Position = projection * viewPos;
 }
@@ -269,13 +276,6 @@ layout (binding = 0) uniform sampler2D Diffuse;
 layout (binding = 1) uniform sampler2D Normal;
 layout (binding = 2) uniform sampler2D Specular;
 layout (binding = 3) uniform sampler2D Occlusion;
-
-// Light position/direction
-uniform vec4 lightPosWS;
-// View position in world space coordinates
-uniform vec4 viewPosWS;
-// Light color
-uniform vec4 lightColor;
 
 // Fragment shader inputs
 in VertexData
@@ -356,11 +356,20 @@ void main()
 R"(
 #version 330 core
 
+// The following is not not needed since GLSL version #420
+#extension GL_ARB_shading_language_420pack : require
+
+// All textures that can be sampled and displayed
+layout (binding = 0) uniform sampler2D Depth;
+layout (binding = 1) uniform sampler2D Color;
+layout (binding = 2) uniform sampler2D Normals;
+layout (binding = 3) uniform sampler2D Material;
+
 // Must match the structure on the CPU side
 struct LightData
 {
   // Light position in world space
-  vec4 position;
+  vec4 positionWS;
   // Light color and intensity
   vec4 color;
 };
@@ -375,16 +384,56 @@ layout (std140) uniform LightBuffer
 // Vertex inputs
 in VertexData
 {
+  vec3 viewRayWS;
   flat int lightID;
 } vIn;
+
+// Camera position in world space coordinates
+uniform vec4 cameraPosWS;
 
 // Output color
 out vec4 oColor;
 
 void main()
 {
-  // TODO
-  oColor = vec4(1, 0, 1, 1.0f);
+  ivec2 texel = ivec2(gl_FragCoord.xy);
+
+  // Reconstruct the world space position using the sampled depth value
+  float d = texelFetch(Depth, texel, 0).r;
+  vec3 viewDirWS = normalize(vIn.viewRayWS);
+  vec3 posWS = cameraPosWS.xyz + viewDirWS * d;
+
+  // Reconstruct the world space normal
+  vec2 n = texelFetch(Normals, texel, 0).rg;
+  float z = sqrt(max(1e-5, 1.0f - dot(n, n)));
+  vec3 normalWS = vec3(n.x, n.y, z);
+
+  // Fetch albedo and specularity
+  vec3 albedo = texelFetch(Color, texel, 0).rgb;
+  float specularity = texelFetch(Material, texel, 0).r;
+
+  // Calculate the lighting direction and distance
+  vec3 lightDirWS = lightBuffer[vIn.lightID].positionWS.xyz - posWS;
+  float distSq = dot(lightDirWS, lightDirWS);
+  float dist = sqrt(distSq);
+  lightDirWS /= dist;
+
+  // Calculate the halfway direction vector (cheaper approximation of
+  // the reflected direction = reflect(-lightDirWS, normal)
+  vec3 halfDirWS = normalize(viewDirWS + lightDirWS);
+
+  // Calculate diffuse and specular coefficients
+  float NdotL = max(0.0f, dot(normalWS, lightDirWS));
+  float NdotH = max(0.0f, dot(normalWS, halfDirWS));
+
+  // Calculate the Blinn-Phong model diffuse and specular terms
+  vec3 lightColor = lightBuffer[vIn.lightID].color.rgb;
+  vec3 diffuse = NdotL * lightColor / distSq;
+  vec3 specular = specularity * lightColor * pow(NdotH, 64.0f) / distSq;
+
+  // Calculate the final color
+  vec3 finalColor = albedo * diffuse + specular;
+  oColor = vec4(finalColor, 1.0f);
 }
 )",
 // ----------------------------------------------------------------------------
@@ -397,7 +446,7 @@ R"(
 struct LightData
 {
   // Light position in world space
-  vec4 position;
+  vec4 positionWS;
   // Light color and intensity
   vec4 color;
 };
@@ -412,6 +461,7 @@ layout (std140) uniform LightBuffer
 // Vertex inputs
 in VertexData
 {
+  vec3 viewRayWS;
   flat int lightID;
 } vIn;
 

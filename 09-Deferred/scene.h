@@ -127,7 +127,7 @@ private:
   // Draw cubes
   void DrawObjects();
   // Draw lights
-  void DrawLights();
+  void DrawLights(const Camera &camera);
   // Draw the ambient light fullscreen pass
   void DrawAmbientPass();
 
