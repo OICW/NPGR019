@@ -444,7 +444,7 @@ layout (binding = 3) uniform sampler2D Material;
 layout (binding = 4) uniform sampler2D HDR;
 
 // Number of used MSAA samples
-layout (location = 0) uniform int MODE;
+layout (location = 0) uniform vec3 NEAR_FAR_MODE;
 
 // Output
 out vec4 color;
@@ -462,6 +462,7 @@ void main()
   // Get the fragment position
   ivec2 texel = ivec2(gl_FragCoord.xy);
 
+  int MODE = int(NEAR_FAR_MODE.z);
   vec3 finalColor = vec3(0.0f);
   if (MODE == 0)
   {
@@ -476,8 +477,19 @@ void main()
   }
   else if (MODE == 2)
   {
-    // Fetch the depth value and display it directly
-    finalColor = texelFetch(Depth, texel, 0).rrr;
+    const float near = NEAR_FAR_MODE.x;
+    const float far = NEAR_FAR_MODE.y;
+
+    // Fetch depth and linearize it by reverting the projection matrix transformation
+    float d = texelFetch(Depth, texel, 0).r;
+
+    // For [-1, 1] depth range, omitting 2* term to forgo division by 2 further
+    float z = (near * far) / (near + far - d * (far + near));
+
+    // Remap it to [0, 1] range for display
+    z = z / (far - near);
+
+    finalColor = z.xxx;
   }
   else if (MODE == 3)
   {

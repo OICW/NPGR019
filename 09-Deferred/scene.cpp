@@ -6,6 +6,7 @@
 #include "scene.h"
 #include "shaders.h"
 
+#include <functional>
 #include <vector>
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -167,9 +168,9 @@ void Scene::Init(int numCubes, int numLights)
   _lights.reserve(_numLights);
   glm::vec4 p = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
 
-  float r = 100.0f;
-  float g = 100.0f;
-  float b = 100.0f;
+  float r = 50.0f;
+  float g = 50.0f;
+  float b = 50.0f;
   glm::vec4 c = glm::vec4(r, g, b, ambientIntentsity);
 
   float radius = getLightRadius(r, g, b);
@@ -185,9 +186,9 @@ void Scene::Init(int numCubes, int numLights)
     float w = getRandom(-2.0f, 2.0f);
     p = glm::vec4(x, y, z, w);
 
-    r = getRandom(0.0f, 50.0f);
-    g = getRandom(0.0f, 50.0f);
-    b = getRandom(0.0f, 50.0f);
+    r = getRandom(0.0f, 25.0f);
+    g = getRandom(0.0f, 25.0f);
+    b = getRandom(0.0f, 25.0f);
     c = glm::vec4(r, g, b, ambientIntentsity);
 
     radius = getLightRadius(r, g, b);
@@ -307,20 +308,54 @@ void Scene::UpdateInstanceData()
 
 void Scene::UpdateLightData(LightSet lightSet, bool visualization)
 {
-  // Create transformation matrix
-  glm::mat4x4 transformation = glm::mat4x4(1.0f);
-
   // Instance and light data CPU side buffer
   static std::vector<InstanceData> instanceData(MAX_INSTANCES);
   static std::vector<LightData> lightData(MAX_INSTANCES);
 
+  // Based on the selected light pass let as pick light using the appropriate way, i.e.,
+  // I'm doing here some lambda expressions magic because I'm lazy and lamdas are cool :)
+  int numLights = 0;
+  std::function<const Light &(int)> getLight;
+  switch (lightSet)
+  {
+    case LightSet::All:
+      numLights = _numLights;
+      getLight = [this](int idx) -> const Light &
+      {
+        return _lights[idx];
+      };
+      break;
+
+    case LightSet::Inside:
+      numLights = (int)_insideLights.size();
+      getLight = [this](int idx) -> const Light &
+      {
+        return _lights[_insideLights[idx]];
+      };
+      break;
+
+    case LightSet::Outside:
+      numLights = (int)_outsideLights.size();
+      getLight = [this](int idx) -> const Light &
+      {
+        return _lights[_outsideLights[idx]];
+      };
+      break;
+  }
+
   // Attenuation for visualization purposes
   const float attenuation = visualization ? 0.05f : 1.0f;
-
-  // For all lights - TODO: change this based on the light set
+  // Scale of the light volume
   float scale;
-  for (int i = 0; i < _numLights; ++i)
+  // Transformation matrix of the light volume
+  glm::mat4x4 transformation = glm::mat4x4(1.0f);
+
+  // For all lights in this light set
+  for (int i = 0; i < numLights; ++i)
   {
+    // Fetch the light from the _lights array using appropriate lambda expression
+    const Light &light = getLight(i);
+
     // Apply scaling based on light intensity
     if (visualization)
     {
@@ -328,17 +363,17 @@ void Scene::UpdateLightData(LightSet lightSet, bool visualization)
     }
     else
     {
-      scale = _lights[i].radius;
+      scale = light.radius;
     }
 
-    // Fill the tranformation matrix
-    transformation = glm::translate(_lights[i].position);
+    // Fill the transformation matrix
+    transformation = glm::translate(light.position);
     transformation *= glm::scale(glm::vec3(scale));
 
     instanceData[i].transformation = glm::transpose(transformation);
 
-    lightData[i].position = glm::vec4(_lights[i].position, 1.0f);
-    lightData[i].color = glm::vec4(_lights[i].color * attenuation);
+    lightData[i].position = glm::vec4(light.position, 1.0f);
+    lightData[i].color = glm::vec4(light.color * attenuation);
   }
 
   {
@@ -350,7 +385,7 @@ void Scene::UpdateLightData(LightSet lightSet, bool visualization)
 
     // Update the buffer data using mapping
     void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-    memcpy(ptr, &*instanceData.begin(), (_numLights) * sizeof(InstanceData));
+    memcpy(ptr, &*instanceData.begin(), (numLights) * sizeof(InstanceData));
     glUnmapBuffer(GL_UNIFORM_BUFFER);
 
     // Unbind the uniform buffer target
@@ -366,7 +401,7 @@ void Scene::UpdateLightData(LightSet lightSet, bool visualization)
 
     // Update the buffer data using mapping
     void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-    memcpy(ptr, &*lightData.begin(), (_numLights) * sizeof(LightData));
+    memcpy(ptr, &*lightData.begin(), (numLights) * sizeof(LightData));
     glUnmapBuffer(GL_UNIFORM_BUFFER);
 
     // Unbind the uniform buffer target
@@ -464,11 +499,14 @@ void Scene::DrawLights()
   // Bind the shader program for instanced light passes
   glUseProgram(shaderProgram[ShaderProgram::InstancedLightPass]);
 
-  // Draw lights w/o depth testing (we'll do it in the shader ourselves, kinda)
+  // Draw light volumes where camera is inside as back faces w/o depth test
+  glCullFace(GL_FRONT);
   glDisable(GL_DEPTH_TEST);
-
-  // Draw light volumes
   lightPass(LightSet::Inside, false);
+
+  // Draw light volumes where camera is outside as back faces w/ depth test
+  glCullFace(GL_BACK);
+  glEnable(GL_DEPTH_TEST);
   lightPass(LightSet::Outside, false);
 
   // --------------------------------------------------------------------------
@@ -477,8 +515,7 @@ void Scene::DrawLights()
   // Bind the shader program for light point visualization
   glUseProgram(shaderProgram[ShaderProgram::InstancedLightVis]);
 
-  // Draw light volumes with depth test enabled
-  glEnable(GL_DEPTH_TEST);
+  // Draw light volumes as small points for visualization purposes
   lightPass(LightSet::All, true);
 }
 
@@ -507,6 +544,10 @@ void Scene::Draw(const Camera &camera, const RenderTargets &renderTargets)
   glEnable(GL_DEPTH_CLAMP);
   glDepthFunc(GL_LEQUAL);
   glDepthMask(GL_TRUE);
+
+  // Enable backface culling
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_BACK);
 
   // --------------------------------------------------------------------------
 

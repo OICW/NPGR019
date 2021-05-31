@@ -555,10 +555,6 @@ void processInput(float dt)
 
 void renderScene()
 {
-  // Enable backface culling
-  glEnable(GL_CULL_FACE);
-  glCullFace(GL_BACK);
-
   // Draw our scene
   scene.Draw(camera, renderTargets);
 
@@ -583,7 +579,8 @@ void renderScene()
   glUseProgram(shaderProgram[ShaderProgram::Tonemapping]);
 
   // Send in the required data
-  glUniform1i(0, renderMode.displayMode);
+  glm::vec3 data = glm::vec3(nearClipPlane, farClipPlane, renderMode.displayMode);
+  glUniform3fv(0, 1, glm::value_ptr(data));
 
   // Bind the GBuffer textures
   glActiveTexture(GL_TEXTURE0);
@@ -664,7 +661,7 @@ int main()
   }
 
   // Scene initialization
-  scene.Init(10, 1);
+  scene.Init(10, 5);
 
   // Enter the application main loop
   mainLoop();
