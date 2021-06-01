@@ -159,6 +159,7 @@ void Scene::Init(int numCubes, int numLights)
   // Calculate radius based on the light intensity
   auto getLightRadius = [](float r, float g, float b) -> float
   {
+    // This is really hard and visible cutoff
     const float cutoff = 0.1f;
     float luminousIntensity = getLuminousIntensity(glm::vec3(r, g, b));
     return sqrt(luminousIntensity / cutoff);

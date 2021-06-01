@@ -404,7 +404,7 @@ void main()
   const float near = NEAR_FAR.x;
   const float far = NEAR_FAR.y;
   float d = texelFetch(Depth, texel, 0).r;
-  float z = 2.0f * (near * far) / (near + far - d * (far + near));
+  float z = (near * far) / (far + d * (near - far));
 
   vec3 viewDirWS = normalize(vIn.viewRayWS);
   vec3 posWS = cameraPosWS.xyz + viewDirWS * z;
@@ -420,13 +420,16 @@ void main()
 
   // Calculate the lighting direction and distance
   vec3 lightDirWS = lightBuffer[vIn.lightID].positionWS.xyz - posWS;
+
+  // We should make sure that this function always gets to zero before getting
+  // out of the light volume -> based on cutoff
   float distSq = dot(lightDirWS, lightDirWS);
   float dist = sqrt(distSq);
   lightDirWS /= dist;
 
   // Calculate the halfway direction vector (cheaper approximation of
   // the reflected direction = reflect(-lightDirWS, normal)
-  vec3 halfDirWS = normalize(viewDirWS + lightDirWS);
+  vec3 halfDirWS = normalize(-viewDirWS + lightDirWS);
 
   // Calculate diffuse and specular coefficients
   float NdotL = max(0.0f, dot(normalWS, lightDirWS));
@@ -538,9 +541,7 @@ void main()
 
     // Fetch depth and linearize it by reverting the projection matrix transformation
     float d = texelFetch(Depth, texel, 0).r;
-
-    // For [-1, 1] depth range, omitting 2* term to forgo division by 2 further
-    float z = (near * far) / (near + far - d * (far + near));
+    float z = (near * far) / (far + d * (near - far));
 
     // Remap it to [0, 1] range for display
     z = z / (far - near);
