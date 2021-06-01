@@ -119,7 +119,7 @@ private:
   // Helper function for creating and updating the instance data
   void UpdateInstanceData();
   // Helper function for creating and updating light data
-  void UpdateLightData(LightSet lightSet, bool visualization);
+  int UpdateLightData(LightSet lightSet, bool visualization);
   // Helper method to update transformation uniform block
   void UpdateTransformBlock(const Camera &camera);
   // Draw the backdrop, floor and walls

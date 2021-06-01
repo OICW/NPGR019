@@ -306,7 +306,7 @@ void Scene::UpdateInstanceData()
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-void Scene::UpdateLightData(LightSet lightSet, bool visualization)
+int Scene::UpdateLightData(LightSet lightSet, bool visualization)
 {
   // Instance and light data CPU side buffer
   static std::vector<InstanceData> instanceData(MAX_INSTANCES);
@@ -407,6 +407,8 @@ void Scene::UpdateLightData(LightSet lightSet, bool visualization)
     // Unbind the uniform buffer target
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
   }
+
+  return numLights;
 }
 
 void Scene::UpdateTransformBlock(const Camera &camera)
@@ -490,10 +492,13 @@ void Scene::DrawLights(const Camera &camera)
   auto lightPass = [this](LightSet lightSet, bool visualize)
   {
     // Update the instancing and light buffer
-    UpdateLightData(lightSet, visualize);
+    int numLights = UpdateLightData(lightSet, visualize);
 
-    glBindVertexArray(_icosahedron->GetVAO());
-    glDrawElementsInstanced(GL_TRIANGLES, _icosahedron->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), _numLights);
+    if (numLights > 0)
+    {
+      glBindVertexArray(_icosahedron->GetVAO());
+      glDrawElementsInstanced(GL_TRIANGLES, _icosahedron->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), numLights);
+    }
   };
 
   // Bind the shader program for instanced light passes

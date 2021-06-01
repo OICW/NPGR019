@@ -223,7 +223,7 @@ void main()
   vec4 viewPos = vec4(worldPos * worldToView, 1.0f);
 
   // Output the WS view ray towards the far plane
-  vOut.viewRayWS = (worldPos - cameraPosWS).xyz;
+  vOut.viewRayWS = worldPos.xyz - cameraPosWS.xyz;
 
   gl_Position = projection * viewPos;
 }
