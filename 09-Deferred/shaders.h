@@ -290,7 +290,7 @@ in VertexData
 // Fragment shader outputs
 layout (location = 0) out vec3 oColor;
 layout (location = 1) out vec2 oNormal;
-layout (location = 2) out vec2 oMaterial;
+layout (location = 2) out uvec3 oMaterial;
 
 void main()
 {
@@ -307,8 +307,11 @@ void main()
   // Just output the material properties into the GBuffer:
   // everything that we'll need to calculate lighting later on
   oColor = albedo;
-  oNormal = normal.xy;
-  oMaterial = vec2(specSample, occlusion);
+  oNormal = normal.xz;
+
+  // Pass information about normal orientation, just a single bit flag, 7 others free to use
+  uint bitFlags = normal.y < 0.0f ? 1u : 0u;
+  oMaterial = uvec3(specSample * 255.0f, occlusion * 255.0f, bitFlags);
 }
 )",
 // ----------------------------------------------------------------------------
@@ -327,7 +330,7 @@ R"(
 layout (binding = 0) uniform sampler2D Depth;
 layout (binding = 1) uniform sampler2D Color;
 layout (binding = 2) uniform sampler2D Normals;
-layout (binding = 3) uniform sampler2D Material;
+layout (binding = 3) uniform usampler2D Material;
 
 // Output color
 out vec4 oColor;
@@ -342,7 +345,7 @@ void main()
 
   // Fetch the required GBuffer data
   vec3 albedo = texelFetch(Color, texel, 0).rgb;
-  float occlusion = texelFetch(Material, texel, 0).g;
+  float occlusion = texelFetch(Material, texel, 0).g / 255.0f;
 
   // We're calculating here just the ambient light contribution to the scene,
   // but we could calculate directional light here as well
@@ -363,7 +366,7 @@ R"(
 layout (binding = 0) uniform sampler2D Depth;
 layout (binding = 1) uniform sampler2D Color;
 layout (binding = 2) uniform sampler2D Normals;
-layout (binding = 3) uniform sampler2D Material;
+layout (binding = 3) uniform usampler2D Material;
 
 // Must match the structure on the CPU side
 struct LightData
@@ -411,12 +414,13 @@ void main()
 
   // Reconstruct the world space normal
   vec2 n = texelFetch(Normals, texel, 0).rg;
-  float nz = sqrt(max(1e-5, 1.0f - dot(n, n)));
-  vec3 normalWS = vec3(n.x, n.y, nz);
+  uint bitFlags = texelFetch(Material, texel, 0).b;
+  float y = (bitFlags == 1u ? -1.0f : 1.0f) * sqrt(max(1e-5, 1.0f - dot(n, n)));
+  vec3 normalWS = vec3(n.r, y, n.g);
 
   // Fetch albedo and specularity
   vec3 albedo = texelFetch(Color, texel, 0).rgb;
-  float specularity = texelFetch(Material, texel, 0).r;
+  float specularity = texelFetch(Material, texel, 0).r / 255.0f;
 
   // Calculate the lighting direction and distance
   vec3 lightDirWS = lightBuffer[vIn.lightID].positionWS.xyz - posWS;
@@ -499,7 +503,7 @@ R"(
 layout (binding = 0) uniform sampler2D Depth;
 layout (binding = 1) uniform sampler2D Color;
 layout (binding = 2) uniform sampler2D Normals;
-layout (binding = 3) uniform sampler2D Material;
+layout (binding = 3) uniform usampler2D Material;
 layout (binding = 4) uniform sampler2D HDR;
 
 // Number of used MSAA samples
@@ -552,19 +556,20 @@ void main()
   {
     // Reconstruct world space normal and display it
     vec2 n = texelFetch(Normals, texel, 0).rg;
-    float z = sqrt(max(1e-5, 1.0f - dot(n, n)));
-    vec3 normal = vec3(n.x, n.y, z);
+    uint bitFlags = texelFetch(Material, texel, 0).b;
+    float y = (bitFlags == 1u ? -1.0f : 1.0f) * sqrt(max(1e-5, 1.0f - dot(n, n)));
+    vec3 normal = vec3(n.r, y, n.g);
     finalColor = normal * 0.5f + 0.5f;
   }
   else if (MODE == 4)
   {
     // Fetch the material specularity value and display it
-    finalColor = texelFetch(Material, texel, 0).rrr;
+    finalColor = texelFetch(Material, texel, 0).rrr / 255.0f;
   }
   else if (MODE == 5)
   {
     // Fetch the material occlusion value and display it
-    finalColor = texelFetch(Material, texel, 0).ggg;
+    finalColor = texelFetch(Material, texel, 0).ggg / 255.0f;
   }
   else
   {

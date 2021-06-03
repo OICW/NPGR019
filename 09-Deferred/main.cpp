@@ -450,7 +450,7 @@ void createFramebuffer(int width, int height)
 
   // Bind and recreate the render target texture
   glBindTexture(GL_TEXTURE_2D, renderTargets.materialRT);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, width, height, 0, GL_RG, GL_BYTE, nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, width, height, 0, GL_RGB_INTEGER, GL_BYTE, nullptr);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, renderTargets.materialRT, 0);
