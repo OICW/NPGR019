@@ -202,11 +202,15 @@ layout (std140) uniform InstanceBuffer
 
 // Camera position in world space coordinates
 uniform vec4 cameraPosWS;
+// Near/far clip planes for depth reconstruction
+uniform vec2 NEAR_FAR;
 
 // Vertex output
 out VertexData
 {
-  vec3 viewRayWS;
+  // Represents a point in the far plane, hence no perspective division
+  noperspective vec3 viewRayWS;
+  // This is a light index and interpolation makes no sense
   flat int lightID;
 } vOut;
 
@@ -222,8 +226,16 @@ void main()
   vec4 worldPos = vec4(vec4(position.xyz, 1.0f) * modelToWorld, 1.0f);
   vec4 viewPos = vec4(worldPos * worldToView, 1.0f);
 
-  // Output the WS view ray towards the far plane
-  vOut.viewRayWS = worldPos.xyz - cameraPosWS.xyz;
+  // Output the WS view ray towards the far plane:
+  // Take view direction from the worldToView inverse matrix (using transpose)
+  vec3 viewDirWS = vec3(worldToView[2][0], worldToView[2][1], worldToView[2][2]);
+  // Point along the viewDirWS in the far plane
+  vec3 p = viewDirWS * NEAR_FAR.y;
+  // Intersect ray from camera towards the WS vertex position with the far plane
+  vec3 viewRayWS = worldPos.xyz - cameraPosWS.xyz;
+  float t = dot(p, viewDirWS) / dot(viewRayWS, viewDirWS);
+  // Pass the intersection to the fragment shader
+  vOut.viewRayWS = viewRayWS * t;
 
   gl_Position = projection * viewPos;
 }
@@ -309,7 +321,7 @@ void main()
   oColor = albedo;
   oNormal = normal.xz;
 
-  // Pass information about normal orientation, just a single bit flag, 7 others free to use
+  // Pass information about normal orientation, just a single bit, 7 others free to use
   uint bitFlags = normal.y < 0.0f ? 1u : 0u;
   oMaterial = uvec3(specSample * 255.0f, occlusion * 255.0f, bitFlags);
 }
@@ -335,7 +347,7 @@ layout (binding = 3) uniform usampler2D Material;
 // Output color
 out vec4 oColor;
 
-// Global ambiet light intensity
+// Global ambient light intensity and color
 layout (location = 0) uniform vec3 ambientLight;
 
 void main()
@@ -387,7 +399,7 @@ layout (std140) uniform LightBuffer
 // Vertex inputs
 in VertexData
 {
-  vec3 viewRayWS;
+  noperspective vec3 viewRayWS;
   flat int lightID;
 } vIn;
 
@@ -403,14 +415,16 @@ void main()
 {
   ivec2 texel = ivec2(gl_FragCoord.xy);
 
-  // Reconstruct the world space position using the sampled depth value
+  // Reconstruct the world space position using linearized sampled depth value
   const float near = NEAR_FAR.x;
   const float far = NEAR_FAR.y;
   float d = texelFetch(Depth, texel, 0).r;
   float z = (near * far) / (far + d * (near - far));
+  // vIn.viewRayWS is at far plane, so just scale it down to the Z value
+  vec3 posWS = cameraPosWS.xyz + vIn.viewRayWS * (z / far);
 
-  vec3 viewDirWS = normalize(vIn.viewRayWS);
-  vec3 posWS = cameraPosWS.xyz + viewDirWS * z;
+  // World space viewing direction
+  vec3 viewDirWS = -normalize(vIn.viewRayWS);
 
   // Reconstruct the world space normal
   vec2 n = texelFetch(Normals, texel, 0).rg;
@@ -424,16 +438,17 @@ void main()
 
   // Calculate the lighting direction and distance
   vec3 lightDirWS = lightBuffer[vIn.lightID].positionWS.xyz - posWS;
-
-  // We should make sure that this function always gets to zero before getting
-  // out of the light volume -> based on cutoff
   float distSq = dot(lightDirWS, lightDirWS);
   float dist = sqrt(distSq);
   lightDirWS /= dist;
 
+  // Need to make sure that distance function gets to 0 before leaving light volume
+  float radius = lightBuffer[vIn.lightID].positionWS.w;
+  float attenuation = 1.0f - smoothstep(0.66f * radius, 0.9f * radius, dist);
+
   // Calculate the halfway direction vector (cheaper approximation of
   // the reflected direction = reflect(-lightDirWS, normal)
-  vec3 halfDirWS = normalize(-viewDirWS + lightDirWS);
+  vec3 halfDirWS = normalize(viewDirWS + lightDirWS);
 
   // Calculate diffuse and specular coefficients
   float NdotL = max(0.0f, dot(normalWS, lightDirWS));
@@ -441,8 +456,8 @@ void main()
 
   // Calculate the Blinn-Phong model diffuse and specular terms
   vec3 lightColor = lightBuffer[vIn.lightID].color.rgb;
-  vec3 diffuse = NdotL * lightColor / distSq;
-  vec3 specular = specularity * lightColor * pow(NdotH, 64.0f) / distSq;
+  vec3 diffuse = attenuation * NdotL * lightColor / distSq;
+  vec3 specular = attenuation * specularity * lightColor * pow(NdotH, 64.0f) / distSq;
 
   // Calculate the final color
   vec3 finalColor = albedo * diffuse + specular;
@@ -474,7 +489,7 @@ layout (std140) uniform LightBuffer
 // Vertex inputs
 in VertexData
 {
-  vec3 viewRayWS;
+  noperspective vec3 viewRayWS;
   flat int lightID;
 } vIn;
 

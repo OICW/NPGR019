@@ -373,7 +373,7 @@ int Scene::UpdateLightData(LightSet lightSet, bool visualization)
 
     instanceData[i].transformation = glm::transpose(transformation);
 
-    lightData[i].position = glm::vec4(light.position, 1.0f);
+    lightData[i].position = glm::vec4(light.position, light.radius);
     lightData[i].color = glm::vec4(light.color * attenuation);
   }
 
