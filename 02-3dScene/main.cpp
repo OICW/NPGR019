@@ -239,8 +239,10 @@ bool compileShaders()
   }
 
   // Clean up resources we don't need anymore at this point
+  glDetachShader(shaderProgram, vertexShader);
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
+  glDetachShader(shaderProgram, fragmentShader);
 
   return true;
 }

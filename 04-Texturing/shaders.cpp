@@ -15,6 +15,21 @@ bool compileShaders()
   // Cleanup lambda
   auto cleanUp = [&vertexShader, &fragmentShader]()
   {
+    // First detach shaders from programs
+    GLsizei count = 0;
+    GLuint shaders[2];
+    for (int i = 0; i < ShaderProgram::NumShaderPrograms; ++i)
+    {
+      if (glIsProgram(shaderProgram[i]))
+      {
+        glGetAttachedShaders(shaderProgram[i], 2, &count, shaders);
+        for (GLsizei j = 0; j < count; ++j)
+        {
+          glDetachShader(shaderProgram[i], shaders[j]);
+        }
+      }
+    }
+
     for (int i = 0; i < VertexShader::NumVertexShaders; ++i)
     {
       if (glIsShader(vertexShader[i]))
