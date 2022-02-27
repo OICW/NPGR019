@@ -233,16 +233,21 @@ bool compileShaders()
   {
     glGetProgramInfoLog(shaderProgram, MAX_BUFFER_LENGTH, nullptr, log);
     printf("Shader program linking failed: %s\n", log);
+
+    // Note that we dispose of the shaderProgram later on in the shutDown() function
+    glDetachShader(shaderProgram, vertexShader);
     glDeleteShader(vertexShader);
+    glDetachShader(shaderProgram, fragmentShader);
     glDeleteShader(fragmentShader);
+
     return false;
   }
 
   // Clean up resources we don't need anymore at this point
   glDetachShader(shaderProgram, vertexShader);
   glDeleteShader(vertexShader);
-  glDeleteShader(fragmentShader);
   glDetachShader(shaderProgram, fragmentShader);
+  glDeleteShader(fragmentShader);
 
   return true;
 }
