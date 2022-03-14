@@ -232,6 +232,9 @@ static const char* fsSource[] = {
 R"(
 #version 330 core
 
+// The following is not not needed since GLSL version #430
+#extension GL_ARB_explicit_uniform_location : require
+
 // The following is not not needed since GLSL version #420
 #extension GL_ARB_shading_language_420pack : require
 
@@ -242,9 +245,9 @@ layout (binding = 2) uniform sampler2D Specular;
 layout (binding = 3) uniform sampler2D Occlusion;
 
 // Light position/direction
-uniform vec3 lightPosWS;
+layout (location = 1) uniform vec3 lightPosWS;
 // View position in world space coordinates
-uniform vec4 viewPosWS;
+layout (location = 2) uniform vec4 viewPosWS;
 
 // Fragment shader inputs
 in VertexData
