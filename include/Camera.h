@@ -47,9 +47,9 @@ public:
   void Move(MovementDirections direction, const glm::vec2& mouseMove, float dt);
 
 protected:
-  // World to view transformation matrix
+  // World to view transformation matrix (could be just 4x3 matrix)
   glm::mat4x4 _worldToView;
-  // View to world transformation matrix
+  // View to world transformation matrix (could be just 4x3 matrix)
   glm::mat4x4 _viewToWorld;
   // Projection matrix
   glm::mat4x4 _projection;

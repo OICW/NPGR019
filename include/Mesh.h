@@ -74,10 +74,15 @@ void Mesh<VertexType>::Init(const std::vector<VertexType> &vb, const std::vector
   // Describe and enable vertex attributes
   VertexType::BindVertexAttributes();
 
+  // Unbind the array buffer to prevent accidental changes
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
   // Generate the index buffer and fill it with data
   glGenBuffers(1, &_ibo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ibo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * _iboSize, static_cast<const void *>(&*ib.begin()), GL_STATIC_DRAW);
+
+  // Note: can't unbind the IBO while the VAO is active unlike VBO which got stored trough glVertexAttribPointer call, it would break things
 
   // Unbind the VAO
   glBindVertexArray(0);

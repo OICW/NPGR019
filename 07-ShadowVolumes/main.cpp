@@ -243,6 +243,7 @@ bool initOpenGL()
   // Request OpenGL 3.3 core profile upon window creation
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_SAMPLES, 0); // Disable MSAA, we'll handle it ourselves
 #if _ENABLE_OPENGL_DEBUG
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif
