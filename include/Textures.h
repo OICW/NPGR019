@@ -23,6 +23,8 @@ public:
   static GLuint CreateCheckerBoardTexture(unsigned int textureSize, unsigned int checkerSize, glm::vec3 oddColor = glm::vec3(0.15f, 0.15f, 0.6f), glm::vec3 evenColor = glm::vec3(0.85f, 0.75f, 0.3f), bool sRGB = true);
   // Create single color texture for default usage
   static GLuint CreateSingleColorTexture(unsigned char r, unsigned char g, unsigned char b);
+  // Create mip-map chain testing texture
+  static GLuint CreateMipMapTestTexture();
   // Load texture from file stored on the disk
   static GLuint LoadTexture(const char name[], bool sRGB);
   // Create all samplers

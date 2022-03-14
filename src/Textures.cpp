@@ -87,6 +87,55 @@ GLuint Textures::CreateSingleColorTexture(unsigned char r, unsigned char g, unsi
   return tex;
 }
 
+GLuint Textures::CreateMipMapTestTexture()
+{  // Generate the texture name
+  GLuint tex;
+  glGenTextures(1, &tex);
+
+  // Create the texture object (first bind call for this name)
+  glBindTexture(GL_TEXTURE_2D, tex);
+
+  const unsigned int stride = 3;
+  unsigned char colors[] = {
+    255, 0, 0,
+    0, 255, 0,
+    0, 0, 255,
+    255, 255, 0,
+    255, 0, 255,
+    0, 255, 255,
+    255, 255, 255,
+    127, 127, 127,
+    0, 0, 0
+  };
+
+  for (unsigned int size = 256, mip = 0; size > 0; size >>= 1, ++mip)
+  {
+    // Create intermediate buffer and fill it with colors
+    unsigned char *data = new unsigned char[stride * size * size];
+    for (unsigned int y = 0; y < size; ++y)
+    {
+      for (unsigned int x = 0; x < size; ++x)
+      {
+        int i = y * stride * size + x * stride;
+        data[i] = colors[mip * stride];
+        data[i + 1] = colors[mip * stride + 1];
+        data[i + 2] = colors[mip * stride + 2];
+      }
+    }
+
+    // Upload texture data: 2D texture, mip level, internal format RGB, width, height, border, input format RGB, type, data
+    glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB, size, size, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+    // Delete the intermediate buffer
+    delete[] data;
+  }
+
+  // Unbind the texture
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  return tex;
+}
+
 GLuint Textures::LoadTexture(const char name[], bool sRGB)
 {
   // Load stored texture on the disk
