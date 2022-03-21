@@ -52,7 +52,7 @@ layout (std140) uniform TransformBlock
   mat4x4 projection;
 };
 
-// Model to world transformation separately
+// Model to world transformation separately, takes 4 slots!
 layout (location = 0) uniform mat4x3 modelToWorld;
 
 // Vertex attribute block, i.e., input
@@ -244,10 +244,13 @@ layout (binding = 1) uniform sampler2D Normal;
 layout (binding = 2) uniform sampler2D Specular;
 layout (binding = 3) uniform sampler2D Occlusion;
 
+// Note: explicit location because AMD APU drivers screw up position when linking against
+// the default vertex shader with mat4x3 modelToWorld at location 0 occupying 4 slots
+
 // Light position/direction
-layout (location = 1) uniform vec3 lightPosWS;
+layout (location = 4) uniform vec3 lightPosWS;
 // View position in world space coordinates
-layout (location = 2) uniform vec4 viewPosWS;
+layout (location = 5) uniform vec4 viewPosWS;
 
 // Fragment shader inputs
 in VertexData
@@ -300,7 +303,7 @@ void main()
   horizon *= horizon;
 
   // Calculate the Phong model terms: ambient, diffuse, specular
-  vec3 ambient = vec3(0.1f, 0.1f, 0.1f) * occlusion;
+  vec3 ambient = vec3(0.25f, 0.25f, 0.25f) * occlusion;
   vec3 diffuse = horizon * NdotL * lightColor / lengthSq;
   vec3 specular = horizon * specSample * lightColor * pow(NdotH, 64.0f) / lengthSq; // Defines shininess
 

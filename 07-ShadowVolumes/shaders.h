@@ -52,7 +52,7 @@ layout (std140) uniform TransformBlock
   mat4x4 projection;
 };
 
-// Model to world transformation separately
+// Model to world transformation separately, takes 4 slots!
 layout (location = 0) uniform mat4x3 modelToWorld;
 
 // Vertex attribute block, i.e., input
@@ -274,6 +274,9 @@ static const char* fsSource[] = {
 R"(
 #version 330 core
 
+// The following is not not needed since GLSL version #430
+#extension GL_ARB_explicit_uniform_location : require
+
 // The following is not not needed since GLSL version #420
 #extension GL_ARB_shading_language_420pack : require
 
@@ -283,12 +286,15 @@ layout (binding = 1) uniform sampler2D Normal;
 layout (binding = 2) uniform sampler2D Specular;
 layout (binding = 3) uniform sampler2D Occlusion;
 
+// Note: explicit location because AMD APU drivers screw up position when linking against
+// the default vertex shader with mat4x3 modelToWorld at location 0 occupying 4 slots
+
 // Light position/direction
-uniform vec4 lightPosWS;
+layout (location = 4) uniform vec4 lightPosWS;
 // View position in world space coordinates
-uniform vec4 viewPosWS;
+layout (location = 5) uniform vec4 viewPosWS;
 // Light color
-uniform vec4 lightColor;
+layout (location = 6) uniform vec4 lightColor;
 
 // Fragment shader inputs
 in VertexData
@@ -466,6 +472,7 @@ layout (std140) uniform TransformBlock
   mat4x4 projection;
 };
 
+// Location 0 is fine, we're linking only against instancing VS
 layout (location = 0) uniform vec4 lightPosWS;
 
 // Vertex input

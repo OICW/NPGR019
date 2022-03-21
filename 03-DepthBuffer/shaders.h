@@ -195,7 +195,7 @@ void main()
       float d = texelFetch(depthBuffer, texCoord, i).r;
       // For [0, 1] depth range
       //float z = (NEAR_FAR.x * NEAR_FAR.y) / (NEAR_FAR.y - d * (NEAR_FAR.y + NEAR_FAR.x));
-      // For [-1, 1] depth range, omitting 2* term to forgo division by 2 further
+      // For [-1, 1] depth range, omitting 2* term to forgo division by 2 to get it to [0, 1]
       float z = (NEAR_FAR.x * NEAR_FAR.y) / (NEAR_FAR.x + NEAR_FAR.y - d * (NEAR_FAR.y + NEAR_FAR.x));
 
       // Visualize the difference between depth and linear Z, remap it to [0, 1] range
