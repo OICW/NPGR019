@@ -122,6 +122,15 @@ GLuint depthStencil = 0;
 
 // ----------------------------------------------------------------------------
 
+// Clear color for the background
+static const float clearColor[] = {0.1f, 0.2f, 0.4f, 1.0f};
+// Clear value for the linear depth
+static const float clearLinearDepth[] = {0.0f, 0.0f, 0.0f, 0.0f};
+// Clear value for the HW depth buffer
+static const float clearDepth = 1.0f;
+
+// ----------------------------------------------------------------------------
+
 // Forward declaration for the framebuffer creation
 void createFramebuffer(int width, int height, GLsizei MSAA);
 
@@ -610,9 +619,10 @@ void renderScene()
 
   // --------------------------------------------------------------------------
 
-  // Clear the color and depth buffer
-  glClearColor(0.1f, 0.2f, 0.4f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  // Clear the color buffers and depth buffer
+  glClearBufferfv(GL_COLOR, 0, clearColor);
+  glClearBufferfv(GL_COLOR, 1, clearLinearDepth);
+  glClearBufferfv(GL_DEPTH, 0, &clearDepth);
 
   // Tell OpenGL we'd like to use the previously compiled shader program
   glUseProgram(shaderProgram[ShaderProgram::Default]);
