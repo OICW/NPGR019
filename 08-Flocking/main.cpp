@@ -275,6 +275,9 @@ bool initOpenGL()
   // Enable depth remapping to [0, 1] interval
   glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
+  // Enable automatic sRGB color conversion
+  glEnable(GL_FRAMEBUFFER_SRGB);
+
   // Register a window resize callback
   glfwSetFramebufferSizeCallback(mainWindow.handle, resizeCallback);
 

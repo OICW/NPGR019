@@ -149,13 +149,14 @@ void main()
   // Retrieve the model to world matrix from the instance buffer
   mat3x4 modelToWorld = instanceBuffer[gl_InstanceID].modelToWorld;
 
-  // Construct the normal transformation matrix
-  mat3 normalTransform = transpose(inverse(mat3(modelToWorld)));
+  // Construct the normal transformation matrix - only if modelToWorld contains non-uniform scale!
+  //mat3 normalTransform = transpose(inverse(mat3(modelToWorld)));
 
   // Create the tangent space matrix and pass it to the fragment shader
   // Note: we must multiply from the left because of transposed modelToWorld
-  vOut.normal = normalize(normal * normalTransform);
-  vOut.tangent = normalize(tangent * mat3(modelToWorld));
+  mat3 modelToWorld_3x3 = mat3(modelToWorld);
+  vOut.normal = normalize(normal * modelToWorld_3x3);
+  vOut.tangent = normalize(tangent * modelToWorld_3x3);
   vOut.bitangent = cross(vOut.tangent, vOut.normal);
 
   // Transform vertex position, note we multiply from the left because of transposed modelToWorld
@@ -268,7 +269,7 @@ layout (location = 0) out vec4 color;
 void main()
 {
   // Normally you'd pass this as another uniform
-  vec3 lightColor = vec3(100.0f, 100.0f, 100.0f);
+  vec3 lightColor = vec3(15.0f, 15.0f, 15.0f);
 
   // Sample textures
   vec3 albedo = texture(Diffuse, vIn.texCoord.st).rgb;
@@ -303,7 +304,7 @@ void main()
   horizon *= horizon;
 
   // Calculate the Phong model terms: ambient, diffuse, specular
-  vec3 ambient = vec3(0.25f, 0.25f, 0.25f) * occlusion;
+  vec3 ambient = vec3(0.01f, 0.01f, 0.01f) * occlusion;
   vec3 diffuse = horizon * NdotL * lightColor / lengthSq;
   vec3 specular = horizon * specSample * lightColor * pow(NdotH, 64.0f) / lengthSq; // Defines shininess
 
@@ -387,6 +388,11 @@ void main()
   }
 
   color = vec4(finalColor.rgb / MSAA_LEVEL, 1.0f);
+
+  // Optional manual gamma correction when GL_FRAMEBUFFER_SRGB is not enabled or the target FB is not sRGB
+  // Note: this is sub-optimal as it should be full sRGB conversion!
+  //const float gamma = 2.2;
+  //color.rgb = pow(color.rgb, vec3(1.0f / gamma));
 }
 )",
 ""};

@@ -280,6 +280,9 @@ bool initOpenGL()
   else
     glfwSwapInterval(0);
 
+  // Enable automatic sRGB color conversion
+  glEnable(GL_FRAMEBUFFER_SRGB);
+
   // Register a window resize callback
   glfwSetFramebufferSizeCallback(mainWindow.handle, resizeCallback);
 

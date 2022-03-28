@@ -433,6 +433,9 @@ bool initOpenGL()
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
 
+  // Enable automatic sRGB color conversion
+  glEnable(GL_FRAMEBUFFER_SRGB);
+
   // Register a window resize callback
   glfwSetFramebufferSizeCallback(mainWindow.handle, resizeCallback);
 

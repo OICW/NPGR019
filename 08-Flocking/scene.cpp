@@ -113,7 +113,7 @@ void Scene::Init(unsigned int workGroupSize, unsigned int numWorkGroups)
 
   // Position & color of the light
   glm::vec4 p = glm::vec4(0.34f, 0.29f, 0.12f, 0.5f);
-  _light = {lissajous(p, 0.0f) * scale, glm::vec4(1000.0f, 1000.0f, 1000.0f, ambientIntentsity), p};
+  _light = {lissajous(p, 0.0f) * scale, glm::vec4(100.0f, 100.0f, 100.0f, ambientIntentsity), p};
 }
 
 void Scene::Update(float dt, bool moveLight, bool turbo)

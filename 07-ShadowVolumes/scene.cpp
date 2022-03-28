@@ -133,12 +133,12 @@ void Scene::Init(int numCubes, int numLights)
   // --------------------------------------------------------------------------
 
   // Ambient intensity for the lights
-  const float ambientIntentsity = 1e-3f;
+  const float ambientIntentsity = 1e-3f / numLights;
 
   // Position & color of the first light
   _lights.reserve(_numLights);
   glm::vec4 p = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-  _lights.push_back({glm::vec3(-3.0f, 3.0f, 0.0f), glm::vec4(100.0f, 100.0f, 100.0f, ambientIntentsity), p});
+  _lights.push_back({glm::vec3(-3.0f, 3.0f, 0.0f), glm::vec4(10.0f, 10.0f, 10.0f, ambientIntentsity), p});
 
   // Generate random positions for the rest of the lights
   for (int i = 1; i < _numLights; ++i)
@@ -149,9 +149,9 @@ void Scene::Init(int numCubes, int numLights)
     float w = getRandom(-2.0f, 2.0f);
     glm::vec4 p = glm::vec4(x, y, z, w);
 
-    float r = getRandom(0.0f, 50.0f);
-    float g = getRandom(0.0f, 50.0f);
-    float b = getRandom(0.0f, 50.0f);
+    float r = getRandom(0.0f, 5.0f);
+    float g = getRandom(0.0f, 5.0f);
+    float b = getRandom(0.0f, 5.0f);
     glm::vec4 c = glm::vec4(r, g, b, ambientIntentsity);
 
     _lights.push_back({offset + lissajous(p, 0.0f) * scale, c, p});

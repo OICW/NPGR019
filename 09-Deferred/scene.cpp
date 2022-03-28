@@ -154,7 +154,7 @@ void Scene::Init(int numCubes, int numLights)
   // --------------------------------------------------------------------------
 
   // Ambient intensity for the lights
-  const float ambientIntentsity = 1e-3f;
+  const float ambientIntentsity = 1e-3 / numLights;
 
   // Calculate radius based on the light intensity
   auto getLightRadius = [](float r, float g, float b) -> float
@@ -543,7 +543,7 @@ void Scene::DrawAmbientPass()
   glUseProgram(program);
 
   // Set the global ambient light
-  const float lightIntensity = 0.1f;
+  const float lightIntensity = 0.01f;
   glUniform3f(0, lightIntensity, lightIntensity, lightIntensity);
 
   // Draw fullscreen quad - textures already bound outside the scope
