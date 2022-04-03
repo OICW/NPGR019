@@ -154,7 +154,7 @@ void Scene::Init(int numCubes, int numLights)
   // --------------------------------------------------------------------------
 
   // Ambient intensity for the lights
-  const float ambientIntentsity = 1e-3 / numLights;
+  const float ambientIntentsity = 1e-3f / numLights;
 
   // Calculate radius based on the light intensity
   auto getLightRadius = [](float r, float g, float b) -> float

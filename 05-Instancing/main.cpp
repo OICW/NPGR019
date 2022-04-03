@@ -18,6 +18,7 @@
 #include "shaders.h"
 
 // Chooses instancing method, there's also third via SSBO which requires OpenGL 4.3
+// (see _ALLOW_SSBO_INSTANCING in shaders.h)
 #define _VERTEX_PARAMS_INSTANCING 0
 #define _UNIFORM_BLOCK_INSTANCING 1
 
