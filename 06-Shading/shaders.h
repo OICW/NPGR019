@@ -44,8 +44,11 @@ R"(
 // The following is not not needed since GLSL version #430
 #extension GL_ARB_explicit_uniform_location : require
 
+// The following is not not needed since GLSL version #420
+#extension GL_ARB_shading_language_420pack : require
+
 // Uniform blocks, i.e., constants
-layout (std140) uniform TransformBlock
+layout (std140, binding = 0) uniform TransformBlock
 {
   // Transposed worldToView matrix - stored compactly as an array of 3 x vec4
   mat3x4 worldToView;
@@ -102,8 +105,11 @@ R"(
 // The following is not not needed since GLSL version #430
 #extension GL_ARB_explicit_uniform_location : require
 
+// The following is not not needed since GLSL version #420
+#extension GL_ARB_shading_language_420pack : require
+
 // Uniform blocks, i.e., constants
-layout (std140) uniform TransformBlock
+layout (std140, binding = 0) uniform TransformBlock
 {
   // Transposed worldToView matrix - stored compactly as an array of 3 x vec4
   mat3x4 worldToView;
@@ -124,7 +130,7 @@ struct InstanceData
 };
 
 // Uniform buffer used for instances
-layout (std140) uniform InstanceBuffer
+layout (std140, binding = 1) uniform InstanceBuffer
 {
   // We are limited to 4096 vec4 registers in total, hence the maximum number of instances
   // being 1024 meaning we could fit another vec4 worth of data
@@ -172,8 +178,11 @@ void main()
 R"(
 #version 330 core
 
+// The following is not not needed since GLSL version #420
+#extension GL_ARB_shading_language_420pack : require
+
 // Uniform blocks, i.e., constants
-layout (std140) uniform TransformBlock
+layout (std140, binding = 0) uniform TransformBlock
 {
   // Transposed worldToView matrix - stored compactly as an array of 3 x vec4
   mat3x4 worldToView;
