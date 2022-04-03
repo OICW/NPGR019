@@ -478,7 +478,8 @@ void Scene::Draw(const Camera &camera, const RenderMode &renderMode, bool carmac
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  // Render the scene into the depth buffer only
+  // Render the scene into the depth buffer only, disable color write
+  glColorMask(false, false, false, false);
   depthPass();
 
   // We primed the depth buffer, no need to write to it anymore
@@ -491,12 +492,19 @@ void Scene::Draw(const Camera &camera, const RenderMode &renderMode, bool carmac
     glClear(GL_STENCIL_BUFFER_BIT);
     glEnable(GL_STENCIL_TEST);
 
-    // Draw shadows first and then direct light utilizing stenciled shadows
+    // Draw shadow volumes first, disable color write
+    glColorMask(false, false, false, false);
     shadowPass(_lights[i].position, _lights[i].color);
+
+    // Draw direct light utilizing stenciled shadows, enable color write
+    glColorMask(true, true, true, true);
     lightPass(RenderPass::DirectLight, _lights[i].position, _lights[i].color);
 
     // Disable stencil test as we don't want shadows to affect ambient light
     glDisable(GL_STENCIL_TEST);
     lightPass(RenderPass::AmbientLight, _lights[i].position, _lights[i].color);
   }
+
+  // Don't forget to leave the color write enabled
+  glColorMask(true, true, true, true);
 }
