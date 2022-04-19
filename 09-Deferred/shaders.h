@@ -238,11 +238,16 @@ void main()
   // Output the WS view ray towards the far plane:
   // Take view direction from the worldToView inverse matrix (using transpose)
   vec3 viewDirWS = vec3(worldToView[2][0], worldToView[2][1], worldToView[2][2]);
-  // Point along the viewDirWS in the far plane
-  vec3 p = viewDirWS * NEAR_FAR.y;
+
   // Intersect ray from camera towards the WS vertex position with the far plane
+  // We need an arbitrary point p in the far plane let's take one along viewDirWS
+  //   vec3 p = viewDirWS * NEAR_FAR.y;
+  // Its distance from camera is:
+  //   dot(p, viewDirWS) == NEAR_FAR.y
+  // Thus all this boils down to:
   vec3 viewRayWS = worldPos.xyz - cameraPosWS.xyz;
-  float t = dot(p, viewDirWS) / dot(viewRayWS, viewDirWS);
+  float t = NEAR_FAR.y / dot(viewRayWS, viewDirWS);
+
   // Pass the intersection to the fragment shader
   vOut.viewRayWS = viewRayWS * t;
 

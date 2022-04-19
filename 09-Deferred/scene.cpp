@@ -381,29 +381,29 @@ int Scene::UpdateLightData(LightSet lightSet, bool visualization)
     // Start working with instancing buffer
     glBindBuffer(GL_UNIFORM_BUFFER, _instancingBuffer);
 
-    // Bind the instancing buffer to the index 1
-    glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
-
     // Update the buffer data using mapping
     void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
     memcpy(ptr, &*instanceData.begin(), (numLights) * sizeof(InstanceData));
     glUnmapBuffer(GL_UNIFORM_BUFFER);
+
+    // Bind the instancing buffer to the index 1
+    glBindBufferBase(GL_UNIFORM_BUFFER, 1, _instancingBuffer);
 
     // Unbind the uniform buffer target
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
   }
 
   {
-    // Start working with instancing buffer
-    glBindBuffer(GL_UNIFORM_BUFFER, _instancingBuffer);
-
-    // Bind the instancing buffer to the index 2
-    glBindBufferBase(GL_UNIFORM_BUFFER, 2, _lightBuffer);
+    // Start working with the light buffer
+    glBindBuffer(GL_UNIFORM_BUFFER, _lightBuffer);
 
     // Update the buffer data using mapping
     void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
     memcpy(ptr, &*lightData.begin(), (numLights) * sizeof(LightData));
     glUnmapBuffer(GL_UNIFORM_BUFFER);
+
+    // Bind the light buffer to the index 2
+    glBindBufferBase(GL_UNIFORM_BUFFER, 2, _lightBuffer);
 
     // Unbind the uniform buffer target
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -497,10 +497,12 @@ void Scene::DrawLights(const Camera &camera)
 
     if (numLights > 0)
     {
-      glBindVertexArray(_icosahedron->GetVAO());
       glDrawElementsInstanced(GL_TRIANGLES, _icosahedron->GetIBOSize(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0), numLights);
     }
   };
+
+  // We'll be drawing icosahedra for both light pass and light visualization
+  glBindVertexArray(_icosahedron->GetVAO());
 
   // Bind the shader program for instanced light passes
   GLuint program = shaderProgram[ShaderProgram::InstancedLightPass];
