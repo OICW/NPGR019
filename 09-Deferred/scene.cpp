@@ -481,7 +481,7 @@ void Scene::DrawObjects()
   glUseProgram(program);
 
   // Bind textures
-   BindTextures(_loadedTextures[LoadedTextures::Diffuse], _loadedTextures[LoadedTextures::Normal], _loadedTextures[LoadedTextures::Specular], _loadedTextures[LoadedTextures::Occlusion]);
+  BindTextures(_loadedTextures[LoadedTextures::Diffuse], _loadedTextures[LoadedTextures::Normal], _loadedTextures[LoadedTextures::Specular], _loadedTextures[LoadedTextures::Occlusion]);
 
   // Draw cubes
   glBindVertexArray(_cube->GetVAO());
