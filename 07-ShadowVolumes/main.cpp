@@ -55,7 +55,7 @@ struct Window
 // Near clip plane settings
 float nearClipPlane = 0.1f;
 // Far clip plane settings
-float farClipPlane = 100.1f;
+float farClipPlane = 1000.1f;
 // Camera FOV
 float fov = 45.0f;
 

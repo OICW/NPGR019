@@ -496,7 +496,8 @@ in VertexData
   vec4 worldPos;
 } v[];
 
-const float epsilon = 0.001f;
+// See note below regarding z-fighting and Peter Panning
+const float epsilon = -0.001f;
 
 // Transpose the worldToView matrix and convert it to 4x4
 mat4 worldToView4x4 = mat4(worldToView[0][0], worldToView[1][0], worldToView[2][0], 0.0f,
@@ -531,6 +532,7 @@ void ExtrudeEdge(vec3 startVertex, vec3 endVertex)
   gl_Position = transform * vec4(lightDir, 0.0f);
   EmitVertex();
 
+  // Restart the triangle strip
   EndPrimitive();
 }
 
@@ -548,12 +550,14 @@ void main()
   // Normal
   vec3 normal = cross(e2, e1);
 
-  // Handle only light facing triangles
-  if (dot(normal, lightDir) > 0)
+  // Handle only light triangles facing away from the light
+  // Note: this removes z-fighting at expense of possible slight Peter Panning (given by the epsilon)
+  // reverse this and e1, e5, e2 comparisons to visualize it (make sure to change epsilon to positive)
+  if (dot(normal, lightDir) < 0)
   {
      // Check e1 for being silhouette
      normal = cross(e1, e3);
-     if (dot(normal, lightDir) <= 0)
+     if (dot(normal, lightDir) >= 0)
      {
        ExtrudeEdge(v[0].worldPos.xyz, v[2].worldPos.xyz);
      }
@@ -561,7 +565,7 @@ void main()
      // Check e5 for being silhouette
      normal = cross(e5, e4);
      lightDir = lightPosWS.xyz - v[2].worldPos.xyz;
-     if (dot(normal, lightDir) <= 0)
+     if (dot(normal, lightDir) >= 0)
      {
        ExtrudeEdge(v[2].worldPos.xyz, v[4].worldPos.xyz);
      }
@@ -569,7 +573,7 @@ void main()
      // Check e2 for being silhouette
      normal = cross(e6, e2);
      lightDir = lightPosWS.xyz - v[4].worldPos.xyz;
-     if (dot(normal, lightDir) <= 0)
+     if (dot(normal, lightDir) >= 0)
      {
        ExtrudeEdge(v[4].worldPos.xyz, v[0].worldPos.xyz);
      }
@@ -600,6 +604,8 @@ void main()
      lightDir = v[2].worldPos.xyz - lightPosWS.xyz;
      gl_Position = transform * vec4(lightDir, 0.0);
      EmitVertex();
+
+     // EndPrimitive() here is implicit
   }
 }
 )",

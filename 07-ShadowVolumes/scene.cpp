@@ -405,7 +405,7 @@ void Scene::Draw(const Camera &camera, const RenderMode &renderMode, bool carmac
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_ONE, GL_ONE);
 
-    // Pass only if equal to 0
+    // Pass only if equal to 0, i.e., outside shadow volume
     glStencilFunc(GL_EQUAL, 0x00, 0xff);
 
     // Don't update the stencil buffer
@@ -483,6 +483,7 @@ void Scene::Draw(const Camera &camera, const RenderMode &renderMode, bool carmac
   depthPass();
 
   // We primed the depth buffer, no need to write to it anymore
+  // Note: for depth primed geometry, it would be the best option to also set depth function to GL_EQUAL
   glDepthMask(GL_FALSE);
 
   // For each light we need to render the scene with its contribution
